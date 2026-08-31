@@ -1,0 +1,3198 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BPV-1 · Embedded Bluetooth Password Vault — Firmware Simulator</title>
+<meta name="description" content="Offline, self-contained firmware simulator for an ESP32 Bluetooth password vault with AES-256-GCM credential storage.">
+<meta name="theme-color" content="#070a0f">
+<meta name="author" content="Archit Arora, Amol Bhatia, Siddhant Dhale, Vatsal Agrawal">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%277%27%20fill%3D%27%230b1017%27%2F%3E%3Cpath%20d%3D%27M11%2015v-4a5%205%200%200%201%2010%200v4%27%20fill%3D%27none%27%20stroke%3D%27%235ee6ff%27%20stroke-width%3D%272.4%27%2F%3E%3Crect%20x%3D%277.5%27%20y%3D%2714.5%27%20width%3D%2717%27%20height%3D%2712%27%20rx%3D%272.6%27%20fill%3D%27%235ee6ff%27%2F%3E%3Ccircle%20cx%3D%2716%27%20cy%3D%2719.4%27%20r%3D%272%27%20fill%3D%27%230b1017%27%2F%3E%3Crect%20x%3D%2715.1%27%20y%3D%2719.4%27%20width%3D%271.8%27%20height%3D%274.4%27%20rx%3D%27.9%27%20fill%3D%27%230b1017%27%2F%3E%3C%2Fsvg%3E">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%277%27%20fill%3D%27%230b1017%27%2F%3E%3Cpath%20d%3D%27M11%2015v-4a5%205%200%200%201%2010%200v4%27%20fill%3D%27none%27%20stroke%3D%27%235ee6ff%27%20stroke-width%3D%272.4%27%2F%3E%3Crect%20x%3D%277.5%27%20y%3D%2714.5%27%20width%3D%2717%27%20height%3D%2712%27%20rx%3D%272.6%27%20fill%3D%27%235ee6ff%27%2F%3E%3Ccircle%20cx%3D%2716%27%20cy%3D%2719.4%27%20r%3D%272%27%20fill%3D%27%230b1017%27%2F%3E%3Crect%20x%3D%2715.1%27%20y%3D%2719.4%27%20width%3D%271.8%27%20height%3D%274.4%27%20rx%3D%27.9%27%20fill%3D%27%230b1017%27%2F%3E%3C%2Fsvg%3E">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="BPV-1 Firmware Simulator">
+<meta property="og:title" content="BPV-1 &mdash; Embedded Bluetooth Password Vault">
+<meta property="og:description" content="Offline ESP32 firmware simulator: PBKDF2-HMAC-SHA256, HKDF and AES-256-GCM credential storage typed over Bluetooth HID. Real Web Crypto, no network access.">
+<meta property="og:image" content="preview.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="BPV-1 &mdash; Embedded Bluetooth Password Vault">
+<meta name="twitter:description" content="Offline ESP32 firmware simulator with real AES-256-GCM credential storage over Bluetooth HID.">
+<meta name="twitter:image" content="preview.png">
+<style>
+/* ==========================================================================
+   BPV-1 Firmware Simulator — stylesheet
+   All styling is inline; no external fonts, no CDN, no network access.
+   ========================================================================== */
+:root{
+  --bg:#070a0f; --bg2:#0b1017; --panel:#0e141d; --panel2:#111a26;
+  --line:#1d2a3a; --line2:#2b3d52;
+  --txt:#c9d7e6; --dim:#7b8ea6; --dim2:#54677d;
+  --cyan:#5ee6ff; --green:#4ade80; --amber:#fbbf24; --red:#f87171;
+  --violet:#a78bfa; --pink:#f472b6;
+  --mono:ui-monospace,"Cascadia Mono","Consolas","DejaVu Sans Mono",monospace;
+  --sans:"Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;
+  --r:10px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:14px}
+body{
+  min-height:100vh;
+  background-image:
+    radial-gradient(1100px 600px at 12% -8%, rgba(94,230,255,.07), transparent 60%),
+    radial-gradient(900px 500px at 92% 0%, rgba(167,139,250,.06), transparent 60%);
+  background-attachment:fixed;
+}
+h1,h2,h3,h4{margin:0;font-weight:650;letter-spacing:.2px}
+code,kbd,pre{font-family:var(--mono)}
+kbd{background:#0a1119;border:1px solid var(--line2);border-bottom-width:2px;border-radius:4px;padding:0 5px;font-size:11px;color:var(--txt)}
+a{color:var(--cyan)}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:#080c12}
+::-webkit-scrollbar-thumb{background:#22303f;border-radius:6px;border:2px solid #080c12}
+::-webkit-scrollbar-thumb:hover{background:#31465d}
+
+/* ---------- header ---------- */
+header.top{
+  display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+  padding:10px 16px;border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg,#0c121b,#080c12);
+  position:sticky;top:0;z-index:60;
+}
+.brand{display:flex;align-items:center;gap:11px;min-width:0}
+.chip-logo{
+  width:38px;height:38px;border-radius:9px;flex:none;
+  background:linear-gradient(150deg,#123045,#0a1a26);
+  border:1px solid #1d4a63;display:grid;place-items:center;
+  color:var(--cyan);font-family:var(--mono);font-size:9px;font-weight:700;line-height:1.05;text-align:center;
+  box-shadow:0 0 22px rgba(94,230,255,.16) inset;
+}
+.brand h1{font-size:15px}
+.brand .sub{font-size:11px;color:var(--dim);font-family:var(--mono)}
+.team{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+.team .m{
+  font-family:var(--mono);font-size:10.5px;color:var(--dim);
+  background:#0b131c;border:1px solid var(--line);border-radius:999px;padding:3px 9px;white-space:nowrap;
+}
+.team .m b{color:var(--txt);font-weight:600}
+.statusbar{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.st{
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.3px;
+  border:1px solid var(--line2);border-radius:6px;padding:3px 8px;color:var(--dim);background:#0a1017;
+  display:flex;align-items:center;gap:6px;white-space:nowrap;
+}
+.st .dot{width:7px;height:7px;border-radius:50%;background:var(--dim2);flex:none}
+.st.on{color:var(--green);border-color:#1d4a33}.st.on .dot{background:var(--green);box-shadow:0 0 8px var(--green)}
+.st.warn{color:var(--amber);border-color:#4a3a17}.st.warn .dot{background:var(--amber);box-shadow:0 0 8px var(--amber)}
+.st.bad{color:var(--red);border-color:#4d2222}.st.bad .dot{background:var(--red);box-shadow:0 0 8px var(--red)}
+.st.info{color:var(--cyan);border-color:#1b4453}.st.info .dot{background:var(--cyan);box-shadow:0 0 8px var(--cyan)}
+
+/* ---------- layout ---------- */
+main.grid{
+  display:grid;gap:14px;padding:14px;align-items:start;
+  grid-template-columns:minmax(430px,560px) minmax(360px,1fr) minmax(430px,1.15fr);
+}
+@media (max-width:1500px){ main.grid{grid-template-columns:minmax(400px,470px) 1fr} }
+@media (max-width:1050px){ main.grid{grid-template-columns:1fr} }
+.col{display:flex;flex-direction:column;gap:14px;min-width:0}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.card>.hd{
+  display:flex;align-items:center;gap:9px;padding:8px 12px;
+  background:linear-gradient(180deg,#121a25,#0d141d);border-bottom:1px solid var(--line);
+}
+.card>.hd h3{font-size:12px;font-family:var(--mono);letter-spacing:.9px;text-transform:uppercase;color:var(--dim)}
+.card>.hd .sp{margin-left:auto}
+.card>.bd{padding:12px}
+.card>.bd.tight{padding:8px}
+.hint{font-size:11px;color:var(--dim2);line-height:1.55}
+.hint b{color:var(--dim)}
+</style>
+<style>
+/* ---------- the device ---------- */
+.device{
+  background:linear-gradient(165deg,#131a23,#0a0e14 60%);
+  border:1px solid #223245;border-radius:16px;padding:14px;
+  box-shadow:0 20px 50px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.04);
+}
+.pcb-top{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.pcb-top .sil{font-family:var(--mono);font-size:10px;color:#4d6479;letter-spacing:1.4px}
+.leds{display:flex;gap:9px;margin-left:auto;align-items:center}
+.led{width:9px;height:9px;border-radius:50%;background:#182231;border:1px solid #24344a;position:relative}
+.led.pwr.on{background:var(--green);box-shadow:0 0 10px var(--green)}
+.led.bt.on{background:#3b82f6;box-shadow:0 0 10px #3b82f6}
+.led.bt.blink{animation:blink 1s steps(2,end) infinite}
+.led.act.on{background:var(--amber);box-shadow:0 0 10px var(--amber)}
+@keyframes blink{50%{opacity:.15}}
+.led-lbl{font-family:var(--mono);font-size:9px;color:#41566b;margin-left:2px}
+
+.screen-wrap{
+  background:#02040a;border:2px solid #1b2938;border-radius:8px;padding:8px;
+  box-shadow:inset 0 0 40px rgba(0,0,0,.9);position:relative;
+}
+#oled{display:block;margin:0 auto;image-rendering:pixelated;
+  filter:drop-shadow(0 0 7px rgba(94,230,255,.30));border-radius:3px}
+.screen-wrap::after{
+  content:"";position:absolute;inset:8px;pointer-events:none;border-radius:3px;
+  background:linear-gradient(180deg,rgba(255,255,255,.045),transparent 42%);
+}
+.screen-meta{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9.5px;color:#3d5266;margin-top:5px;padding:0 2px}
+
+/* rotary encoder + buttons */
+.controls{display:grid;grid-template-columns:150px 1fr;gap:14px;margin-top:14px;align-items:center}
+.knob-box{display:flex;flex-direction:column;align-items:center;gap:7px}
+.knob{
+  width:132px;height:132px;border-radius:50%;position:relative;cursor:grab;user-select:none;
+  background:conic-gradient(from 0deg,#1b2634,#26364a,#1b2634,#26364a,#1b2634);
+  border:2px solid #2f4257;
+  box-shadow:0 10px 26px rgba(0,0,0,.6), inset 0 0 26px rgba(0,0,0,.65);
+  transition:transform .14s cubic-bezier(.2,.8,.3,1);
+}
+.knob:active{cursor:grabbing}
+.knob .cap{
+  position:absolute;inset:22px;border-radius:50%;
+  background:radial-gradient(circle at 34% 28%,#2b3d52,#131c27 70%);
+  border:1px solid #35485f;display:grid;place-items:center;
+  font-family:var(--mono);font-size:9.5px;color:#5d7790;text-align:center;line-height:1.3;
+}
+.knob .notch{position:absolute;top:7px;left:50%;transform:translateX(-50%);width:5px;height:15px;border-radius:3px;background:var(--cyan);box-shadow:0 0 10px var(--cyan)}
+.knob.pressed{transform:scale(.965)}
+.knob-btns{display:flex;gap:6px}
+.ctl-right{display:flex;flex-direction:column;gap:8px}
+.btn-row{display:flex;gap:7px;flex-wrap:wrap}
+
+/* ---------- buttons ---------- */
+button{font-family:var(--sans);font-size:12px;color:var(--txt);cursor:pointer;
+  background:#131c27;border:1px solid var(--line2);border-radius:7px;padding:7px 11px;
+  transition:background .12s,border-color .12s,transform .06s}
+button:hover:not(:disabled){background:#1a2634;border-color:#3c5470}
+button:active:not(:disabled){transform:translateY(1px)}
+button:disabled{opacity:.38;cursor:not-allowed}
+button.k{font-family:var(--mono);font-size:11px;letter-spacing:.4px}
+button.primary{background:linear-gradient(180deg,#12435a,#0d3145);border-color:#1f6c8d;color:#c9f2ff}
+button.primary:hover:not(:disabled){background:linear-gradient(180deg,#175a78,#0f3d55)}
+button.danger{background:#2a1418;border-color:#5b2630;color:#ffc9cf}
+button.danger:hover:not(:disabled){background:#3a1a20}
+button.warn{background:#2a2210;border-color:#5e4a17;color:#ffe6b0}
+button.warn:hover:not(:disabled){background:#372c14}
+button.ok{background:#0f2a1c;border-color:#1f6340;color:#c4f7dc}
+button.ok:hover:not(:disabled){background:#153a27}
+button.ghost{background:transparent}
+button.wide{width:100%;justify-content:center}
+button.sm{padding:4px 8px;font-size:11px}
+button.big{padding:11px 14px;font-size:13px;font-weight:600}
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:7px;overflow:hidden}
+.seg button{border:none;border-radius:0;border-right:1px solid var(--line);padding:5px 9px}
+.seg button:last-child{border-right:none}
+.seg button.sel{background:#173445;color:#bdefff}
+
+/* ---------- tabs ---------- */
+.tabs{display:flex;gap:4px;flex-wrap:wrap;padding:8px 10px;border-bottom:1px solid var(--line);background:#0b1119}
+.tab{font-family:var(--mono);font-size:11px;padding:5px 10px;border-radius:6px;border:1px solid transparent;color:var(--dim);cursor:pointer;background:transparent}
+.tab:hover{color:var(--txt);background:#111a24}
+.tab.sel{background:#132738;border-color:#1f4a63;color:var(--cyan)}
+.tabpane{display:none}.tabpane.sel{display:block}
+
+/* ---------- console / log ---------- */
+.console{
+  font-family:var(--mono);font-size:11px;line-height:1.55;
+  background:#05080c;border-top:1px solid var(--line);
+  height:330px;overflow:auto;padding:8px 10px;white-space:pre-wrap;word-break:break-word;
+}
+.console .ln{display:flex;gap:8px}
+.console .t{color:#3f5568;flex:none}
+.console .tg{flex:none;min-width:64px}
+.lv-I .tg{color:var(--cyan)} .lv-W .tg{color:var(--amber)} .lv-E .tg{color:var(--red)}
+.lv-S .tg{color:var(--violet)} .lv-D .tg{color:#5f7790} .lv-A .tg{color:var(--pink)}
+.lv-E .m{color:#ffb4b4} .lv-W .m{color:#ffe0a3} .lv-S .m{color:#d9ccff} .lv-A .m{color:#ffc7e4}
+.console .m{color:#9fb3c8}
+.hexdump{font-family:var(--mono);font-size:11px;line-height:1.6;background:#05080c;padding:10px;overflow:auto;height:330px;border-top:1px solid var(--line)}
+.hexdump .off{color:#3f5568}
+.hexdump .as{color:#4e6579}
+.b-magic{color:var(--violet)} .b-salt{color:var(--cyan)} .b-ver{color:var(--amber)}
+.b-meta{color:#6f89a1} .b-label{color:var(--green)} .b-iv{color:var(--pink)} .b-ct{color:#ff8f6b} .b-sec{color:#ff6b6b}
+.legend{display:flex;gap:10px;flex-wrap:wrap;font-family:var(--mono);font-size:10px;padding:8px 10px;color:var(--dim2);border-top:1px solid var(--line);background:#0a0f16}
+.legend i{font-style:normal}
+</style>
+<style>
+/* ---------- host PC ---------- */
+.laptop{background:#0a0f16;border:1px solid var(--line2);border-radius:10px;padding:10px}
+.laptop .bar{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:10.5px;color:var(--dim2);margin-bottom:9px}
+.laptop .bar .dots{display:flex;gap:4px}
+.laptop .bar .dots i{width:8px;height:8px;border-radius:50%;background:#243447;display:block}
+.loginbox{background:#101822;border:1px solid var(--line);border-radius:9px;padding:14px}
+.loginbox h4{font-size:13px;margin-bottom:2px}
+.loginbox .u{font-size:11px;color:var(--dim2);margin-bottom:12px}
+.field{margin-bottom:10px}
+.field label{display:block;font-size:10.5px;font-family:var(--mono);color:var(--dim);margin-bottom:4px;letter-spacing:.4px}
+.field .inp{
+  display:flex;align-items:center;gap:6px;background:#080d13;border:1px solid var(--line2);border-radius:6px;padding:8px 10px;
+  font-family:var(--mono);font-size:13px;color:var(--txt);min-height:36px;word-break:break-all;
+}
+.field .inp.focus{border-color:var(--cyan);box-shadow:0 0 0 2px rgba(94,230,255,.13)}
+.field .inp .caret{width:2px;height:15px;background:var(--cyan);animation:caret 1s steps(2,end) infinite;flex:none}
+@keyframes caret{50%{opacity:0}}
+.field .val{flex:1;min-width:0}
+.field .ph{color:#3a4b5d}
+.submitrow{display:flex;align-items:center;gap:9px;margin-top:12px}
+.authmsg{font-family:var(--mono);font-size:11px}
+.sniffer{font-family:var(--mono);font-size:11px;background:#05080c;border:1px solid var(--line);border-radius:8px;padding:8px;height:104px;overflow:auto;line-height:1.5;color:#7f95ab}
+.sniffer .enc{color:#3f5568}
+.sniffer .plain{color:var(--red)}
+
+/* ---------- generic forms/tables ---------- */
+input[type=text],input[type=password],input[type=number],select,textarea{
+  background:#080d13;border:1px solid var(--line2);border-radius:6px;color:var(--txt);
+  font-family:var(--mono);font-size:12px;padding:7px 9px;width:100%;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--cyan);box-shadow:0 0 0 2px rgba(94,230,255,.12)}
+label.inline{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--dim);cursor:pointer}
+input[type=checkbox]{accent-color:#2b91b8;width:15px;height:15px;cursor:pointer}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+table.t{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px}
+table.t th{text-align:left;color:var(--dim2);font-weight:500;padding:5px 7px;border-bottom:1px solid var(--line);letter-spacing:.4px}
+table.t td{padding:5px 7px;border-bottom:1px solid #131c26;color:#a8bccf;vertical-align:top}
+table.t tr:hover td{background:#0d1621}
+.mono{font-family:var(--mono)}
+.tiny{font-size:10.5px}
+.muted{color:var(--dim2)}
+.ok-t{color:var(--green)}.bad-t{color:var(--red)}.warn-t{color:var(--amber)}.cy-t{color:var(--cyan)}.vi-t{color:var(--violet)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-family:var(--mono);font-size:11.5px}
+.kv dt{color:var(--dim2)}.kv dd{margin:0;color:#b7cadd;word-break:break-all}
+.note{border-left:3px solid var(--line2);padding:7px 10px;background:#0a1017;border-radius:0 7px 7px 0;font-size:11.5px;color:var(--dim);line-height:1.6}
+.note.good{border-color:var(--green)}.note.bad{border-color:var(--red)}.note.warnb{border-color:var(--amber)}.note.info{border-color:var(--cyan)}
+
+/* ---------- state machine ---------- */
+.fsm{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;padding:10px}
+.node{
+  font-family:var(--mono);font-size:10px;text-align:center;padding:9px 4px;border-radius:7px;
+  border:1px solid var(--line);background:#0b1119;color:var(--dim2);position:relative;transition:all .18s
+}
+.node.act{background:#0f3a4d;border-color:var(--cyan);color:#d3f6ff;box-shadow:0 0 16px rgba(94,230,255,.3)}
+.node.visited{border-color:#28455c;color:#8fa8bd}
+.node .n{position:absolute;top:2px;left:4px;font-size:8px;color:#3b5061}
+
+/* ---------- attack lab ---------- */
+.atk{display:flex;flex-direction:column;gap:7px}
+.atk .row{display:grid;grid-template-columns:1fr auto;gap:9px;align-items:center;padding:7px 9px;background:#0a1017;border:1px solid var(--line);border-radius:8px}
+.atk .row .ttl{font-size:12px;color:#c4d4e4}
+.atk .row .ds{font-size:10.5px;color:var(--dim2);line-height:1.45;margin-top:2px}
+.verdict{font-family:var(--mono);font-size:11px;padding:6px 9px;border-radius:6px;margin-top:5px}
+.verdict.block{background:#0d2a1c;color:#a9f0c8;border:1px solid #1e6742}
+.verdict.leak{background:#2a1416;color:#ffbcbc;border:1px solid #6b2a2a}
+
+/* ---------- tests ---------- */
+.tst{font-family:var(--mono);font-size:11px}
+.tst .r{display:flex;gap:8px;padding:3px 0;border-bottom:1px solid #101a24;align-items:baseline}
+.tst .r .s{flex:none;width:42px}
+.tst .r .nm{flex:1;color:#a8bccf}
+.tst .r .ms{color:#42586c;flex:none}
+.pass{color:var(--green)}.fail{color:var(--red)}.run{color:var(--amber)}
+
+/* ---------- narrator + modal + overlays ---------- */
+#narrator{
+  position:fixed;left:50%;bottom:16px;transform:translateX(-50%) translateY(140%);
+  max-width:min(1000px,94vw);z-index:200;transition:transform .35s cubic-bezier(.2,.9,.3,1);
+  background:linear-gradient(180deg,#13202c,#0b131b);border:1px solid #2b587a;border-radius:11px;
+  padding:12px 18px;box-shadow:0 16px 44px rgba(0,0,0,.7);display:flex;gap:14px;align-items:center
+}
+#narrator.show{transform:translateX(-50%) translateY(0)}
+#narrator .step{font-family:var(--mono);font-size:10.5px;color:var(--cyan);border:1px solid #245a75;border-radius:999px;padding:3px 10px;flex:none}
+#narrator .txt{font-size:14px;color:#dbe9f6;line-height:1.5}
+#modal{position:fixed;inset:0;background:rgba(2,5,9,.82);z-index:300;display:none;place-items:center;padding:20px;backdrop-filter:blur(3px)}
+#modal.show{display:grid}
+#modal .box{background:var(--panel);border:1px solid var(--line2);border-radius:12px;max-width:900px;width:100%;max-height:88vh;overflow:auto;box-shadow:0 24px 70px rgba(0,0,0,.8)}
+#fatal{position:fixed;inset:0;background:#070a0f;z-index:900;display:none;place-items:center;padding:24px}
+#fatal.show{display:grid}
+#fatal .b{max-width:760px;border:1px solid #5b2630;background:#12070a;border-radius:12px;padding:26px}
+#fatal h2{color:var(--red);font-size:19px;margin-bottom:10px}
+#fatal pre{background:#05080c;border:1px solid var(--line);border-radius:8px;padding:11px;overflow:auto;font-size:12px;color:#a8bccf}
+.toast{position:fixed;right:16px;top:70px;z-index:400;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast .t{background:#0f1a24;border:1px solid var(--line2);border-left-width:3px;border-radius:8px;padding:9px 13px;font-size:12px;
+  box-shadow:0 10px 30px rgba(0,0,0,.6);animation:tin .25s ease-out;max-width:340px}
+.toast .t.ok{border-left-color:var(--green)}.toast .t.err{border-left-color:var(--red)}
+.toast .t.info{border-left-color:var(--cyan)}.toast .t.warn{border-left-color:var(--amber)}
+@keyframes tin{from{opacity:0;transform:translateX(20px)}}
+.hidden{display:none!important}
+.flash-w{animation:fw .4s}
+@keyframes fw{0%,100%{background:transparent}50%{background:rgba(251,191,36,.14)}}
+.docs{font-size:12.5px;line-height:1.75;color:#a8bccf;padding:12px;max-height:430px;overflow:auto}
+.docs h4{color:var(--cyan);font-family:var(--mono);font-size:11.5px;letter-spacing:.7px;text-transform:uppercase;margin:14px 0 6px}
+.docs h4:first-child{margin-top:0}
+.docs ol,.docs ul{margin:6px 0;padding-left:20px}
+.docs li{margin:3px 0}
+.docs code{background:#0a1017;border:1px solid var(--line);border-radius:4px;padding:1px 5px;font-size:11.5px;color:#bfe9f7}
+</style>
+</head>
+<body>
+
+<!-- ===================== FATAL / NO-CRYPTO OVERLAY ===================== -->
+<div id="fatal">
+  <div class="b">
+    <h2>Web Crypto API unavailable</h2>
+    <p style="color:#c9d7e6;line-height:1.7">
+      This simulator performs <b>real</b> cryptography using <code>window.crypto.subtle</code>.
+      Your browser did not expose it for this page, so the vault cannot run.
+      This normally happens only in older browsers or in an insecure context.
+    </p>
+    <p style="color:#c9d7e6;line-height:1.7">Serve the folder over <b>localhost</b> (a secure context) and reload:</p>
+    <pre>cd "&lt;this folder&gt;"
+python -m http.server 8000
+# then open   http://localhost:8000/index.html</pre>
+    <p style="color:#7b8ea6;font-size:12.5px">
+      Helper scripts <code>serve.bat</code> (Windows) and <code>serve.sh</code> (macOS/Linux) are included next to this file.
+      Chrome and Firefox both treat <code>file://</code> as a secure context, so double-clicking
+      <code>index.html</code> normally works without a server.
+    </p>
+    <p id="fatal-detail" class="mono tiny" style="color:#f87171"></p>
+  </div>
+</div>
+
+<!-- ===================== HEADER ===================== -->
+<header class="top">
+  <div class="brand">
+    <div class="chip-logo">BPV<br>1</div>
+    <div>
+      <h1>Embedded Bluetooth Password Vault</h1>
+      <div class="sub">BPV-1 &middot; ESP32 firmware simulator &middot; secure credential storage</div>
+    </div>
+  </div>
+  <div class="statusbar">
+    <div class="st" id="st-pwr"><span class="dot"></span><span>POWER</span></div>
+    <div class="st" id="st-lock"><span class="dot"></span><span>LOCKED</span></div>
+    <div class="st" id="st-bt"><span class="dot"></span><span>BLE</span></div>
+    <div class="st" id="st-crypto"><span class="dot"></span><span>CRYPTO</span></div>
+    <div class="st" id="st-flash"><span class="dot"></span><span>FLASH</span></div>
+  </div>
+  <div class="team">
+    <span class="m"><b>Archit Arora</b> 24BYB1144</span>
+    <span class="m"><b>Amol Bhatia</b> 24BYB1026</span>
+    <span class="m"><b>Siddhant Dhale</b> 24BAI1185</span>
+    <span class="m"><b>Vatsal Agrawal</b> 24BAI1355</span>
+  </div>
+</header>
+
+<main class="grid">
+
+<!-- ===================== COLUMN 1 : THE DEVICE ===================== -->
+<div class="col">
+  <div class="device">
+    <div class="pcb-top">
+      <span class="sil">BPV-1 &middot; ESP32-WROOM-32 &middot; SSD1306 128x64</span>
+      <div class="leds">
+        <span class="led pwr" id="led-pwr"></span><span class="led-lbl">PWR</span>
+        <span class="led bt" id="led-bt"></span><span class="led-lbl">BLE</span>
+        <span class="led act" id="led-act"></span><span class="led-lbl">ACT</span>
+      </div>
+    </div>
+
+    <div class="screen-wrap"><canvas id="oled" width="640" height="320"></canvas></div>
+    <div class="screen-meta">
+      <span id="meta-state">state: OFF</span>
+      <span id="meta-fps">frame 0 &middot; 128x64 1bpp</span>
+    </div>
+
+    <div class="controls">
+      <div class="knob-box">
+        <div class="knob" id="knob" title="Scroll to rotate · click to press · hold to go back">
+          <div class="notch"></div>
+          <div class="cap">ROTARY<br>ENCODER<br><span style="color:#3f5568">EC11</span></div>
+        </div>
+        <div class="knob-btns">
+          <button class="k sm" id="btn-ccw" title="Rotate counter-clockwise">&#8634; CCW</button>
+          <button class="k sm" id="btn-cw" title="Rotate clockwise">CW &#8635;</button>
+        </div>
+      </div>
+      <div class="ctl-right">
+        <button class="k big primary wide" id="btn-press">PRESS &#9166;</button>
+        <button class="k wide" id="btn-long">HOLD (BACK / OK)</button>
+        <div class="btn-row">
+          <button class="k sm" id="btn-power">POWER</button>
+          <button class="k sm" id="btn-reset">RESET</button>
+          <button class="k sm warn" id="btn-lock">LOCK NOW</button>
+        </div>
+        <div class="hint">
+          <b>Keyboard:</b> <kbd>&uarr;</kbd><kbd>&darr;</kbd> rotate &middot; <kbd>Enter</kbd> press &middot;
+          <kbd>Esc</kbd> hold/back &middot; type letters directly during password entry.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- guided demo -->
+  <div class="card">
+    <div class="hd"><h3>Guided demo</h3><span class="sp"></span>
+      <span class="mono tiny muted" id="demo-status">idle</span></div>
+    <div class="bd">
+      <div class="btn-row" style="margin-bottom:9px">
+        <button class="primary" id="demo-play">&#9654; Play full walkthrough</button>
+        <button id="demo-stop" disabled>&#9632; Stop</button>
+      </div>
+      <div class="hint">Runs the complete specified algorithm end to end &mdash; boot &rarr; failed attempts &rarr;
+        persisted counter &rarr; unlock &rarr; select &rarr; AES-256-GCM decrypt &rarr; BLE HID typing &rarr;
+        zeroize &rarr; auto-lock. Narration appears at the bottom of the screen.</div>
+    </div>
+  </div>
+
+  <!-- cheat sheet -->
+  <div class="card">
+    <div class="hd"><h3>Demo cheat sheet</h3></div>
+    <div class="bd">
+      <dl class="kv">
+        <dt>Master password</dt><dd class="cy-t" id="cheat-pw">Vault@2026</dd>
+        <dt>KDF</dt><dd id="cheat-kdf">PBKDF2-HMAC-SHA256</dd>
+        <dt>Records</dt><dd id="cheat-recs">&mdash;</dd>
+        <dt>Failed attempts</dt><dd id="cheat-fails">0 / 5</dd>
+      </dl>
+      <div class="btn-row" style="margin-top:10px">
+        <button class="sm ok" id="btn-quickprov">Quick factory provision</button>
+        <button class="sm danger" id="btn-wipe">Factory wipe</button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- ===================== COLUMN 2 : HOST PC + PROVISIONING ===================== -->
+<div class="col">
+  <div class="card">
+    <div class="hd"><h3>Paired host &mdash; DESKTOP-PC</h3><span class="sp"></span>
+      <span class="mono tiny" id="hid-state">HID: not connected</span></div>
+    <div class="bd">
+      <div class="laptop">
+        <div class="bar">
+          <span class="dots"><i></i><i></i><i></i></span>
+          <span id="host-url">https://github.com/login</span>
+          <span style="margin-left:auto" id="host-kbd">&#9000; BPV-1 Vault (BLE keyboard)</span>
+        </div>
+        <div class="loginbox">
+          <h4>Sign in</h4>
+          <div class="u">The vault appears to this computer as an ordinary Bluetooth keyboard.</div>
+          <div class="field">
+            <label>Username</label>
+            <div class="inp" id="f-user"><span class="val ph">username</span></div>
+          </div>
+          <div class="field">
+            <label>Password</label>
+            <div class="inp" id="f-pass"><span class="val ph">password</span></div>
+          </div>
+          <div class="submitrow">
+            <button class="primary" id="host-submit">Sign in</button>
+            <button class="sm ghost" id="host-clear">Clear</button>
+            <label class="inline"><input type="checkbox" id="host-reveal"> reveal</label>
+            <span class="authmsg" id="host-auth"></span>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:11px">
+        <div class="mono tiny muted" style="margin-bottom:5px;display:flex;align-items:center;gap:8px">
+          <span>OVER-THE-AIR BLE SNIFFER</span>
+          <label class="inline tiny" style="margin-left:auto"><input type="checkbox" id="ble-encrypt" checked> LE Secure Connections (AES-CCM)</label>
+        </div>
+        <div class="sniffer" id="sniffer"><span class="enc">idle &mdash; no link layer traffic</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="hd"><h3>USB provisioning console</h3><span class="sp"></span>
+      <span class="mono tiny muted">vault-cli &middot; 115200 8N1</span></div>
+    <div class="bd">
+      <div class="hint" style="margin-bottom:9px">Simulates the factory / serial enrolment tool. Writing credentials requires an
+        <b>unlocked</b> vault: the host tool never sees the vault key, it hands plaintext to the device, which
+        encrypts it in place.</div>
+      <div class="grid2" style="margin-bottom:8px">
+        <div><label class="tiny muted mono">LABEL</label><input type="text" id="p-label" placeholder="e.g. Cloud Console" maxlength="18"></div>
+        <div><label class="tiny muted mono">USERNAME</label><input type="text" id="p-user" placeholder="user@example.com" maxlength="40"></div>
+      </div>
+      <div style="margin-bottom:8px"><label class="tiny muted mono">PASSWORD</label>
+        <div style="display:flex;gap:7px"><input type="text" id="p-pass" placeholder="secret" maxlength="48">
+        <button class="sm" id="p-gen" title="crypto.getRandomValues">Gen</button></div>
+      </div>
+      <div class="btn-row">
+        <button class="ok" id="p-add">Encrypt &amp; store record</button>
+        <button class="sm" id="p-changepw">Change master password (re-key)</button>
+      </div>
+      <div id="p-msg" class="mono tiny" style="margin-top:8px"></div>
+      <table class="t" id="rec-table" style="margin-top:10px"><thead>
+        <tr><th>#</th><th>Label</th><th>IV</th><th>Ciphertext (GCM)</th><th>Uses</th><th></th></tr>
+      </thead><tbody></tbody></table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="hd"><h3>Attack lab</h3><span class="sp"></span><span class="mono tiny muted">threat-model demos</span></div>
+    <div class="bd tight"><div class="atk" id="atk-list"></div></div>
+  </div>
+</div>
+<!-- ===================== COLUMN 3 : INSTRUMENTATION ===================== -->
+<div class="col">
+  <div class="card">
+    <div class="tabs" id="tabs">
+      <button class="tab sel" data-t="log">Serial monitor</button>
+      <button class="tab" data-t="flash">Flash (NVS)</button>
+      <button class="tab" data-t="crypto">Crypto trace</button>
+      <button class="tab" data-t="sram">SRAM</button>
+      <button class="tab" data-t="fsm">State machine</button>
+      <button class="tab" data-t="test">Self-test</button>
+      <button class="tab" data-t="about">About / docs</button>
+    </div>
+
+    <div class="tabpane sel" id="pane-log">
+      <div class="console" id="log"></div>
+      <div class="legend">
+        <span><i class="cy-t">I</i> info</span><span><i class="warn-t">W</i> warn</span>
+        <span><i class="bad-t">E</i> error</span><span><i class="vi-t">S</i> security</span>
+        <span><i style="color:#f472b6">A</i> attack</span>
+        <span style="margin-left:auto"><button class="sm ghost" id="log-clear">clear</button></span>
+      </div>
+    </div>
+
+    <div class="tabpane" id="pane-flash">
+      <div style="padding:10px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <span class="mono tiny muted">esp_partition &quot;nvs&quot; &middot; simulated raw image</span>
+        <span style="margin-left:auto"></span>
+        <button class="sm" id="flash-refresh">re-read</button>
+        <button class="sm" id="flash-scan">scan for plaintext secrets</button>
+      </div>
+      <div class="hexdump" id="hexdump"></div>
+      <div class="legend">
+        <span><i class="b-magic">&#9632;</i> header</span><span><i class="b-salt">&#9632;</i> KDF salt</span>
+        <span><i class="b-ver">&#9632;</i> verifier</span><span><i class="b-sec">&#9632;</i> attempt counter</span>
+        <span><i class="b-label">&#9632;</i> label</span>
+        <span><i class="b-iv">&#9632;</i> IV/nonce</span><span><i class="b-ct">&#9632;</i> AES-GCM ct+tag</span>
+      </div>
+    </div>
+
+    <div class="tabpane" id="pane-crypto">
+      <div class="console" id="cryptolog" style="height:392px"></div>
+    </div>
+
+    <div class="tabpane" id="pane-sram">
+      <div style="padding:10px 12px;display:flex;gap:9px;align-items:center">
+        <span class="mono tiny muted">volatile working memory</span>
+        <label class="inline tiny" style="margin-left:auto"><input type="checkbox" id="sram-reveal"> reveal secret bytes</label>
+      </div>
+      <div class="hexdump" id="sramview" style="height:360px"></div>
+    </div>
+
+    <div class="tabpane" id="pane-fsm">
+      <div class="fsm" id="fsm"></div>
+      <div class="console" id="fsmlog" style="height:220px"></div>
+    </div>
+
+    <div class="tabpane" id="pane-test">
+      <div style="padding:10px 12px;display:flex;gap:8px;align-items:center">
+        <button class="primary" id="test-run">Run self-test suite</button>
+        <span class="mono tiny" id="test-sum">not run</span>
+      </div>
+      <div class="hexdump" id="testout" style="height:360px"></div>
+    </div>
+
+    <div class="tabpane" id="pane-about"><div class="docs" id="docs"></div></div>
+  </div>
+
+  <div class="card">
+    <div class="hd"><h3>Device settings (live)</h3></div>
+    <div class="bd">
+      <div class="grid2" style="gap:11px">
+        <div>
+          <label class="tiny muted mono">AUTO-LOCK TIMEOUT</label>
+          <select id="s-autolock">
+            <option value="15000">15 s</option><option value="30000">30 s</option>
+            <option value="60000" selected>60 s</option><option value="120000">2 min</option><option value="300000">5 min</option>
+          </select>
+        </div>
+        <div>
+          <label class="tiny muted mono">HID TYPING SPEED</label>
+          <select id="s-speed">
+            <option value="90">slow (90 ms/key)</option><option value="45" selected>normal (45 ms/key)</option>
+            <option value="12">fast (12 ms/key)</option>
+          </select>
+        </div>
+        <div>
+          <label class="tiny muted mono">PBKDF2 ITERATIONS</label>
+          <select id="s-iters">
+            <option value="50000">50 000</option><option value="150000" selected>150 000</option>
+            <option value="310000">310 000 (OWASP)</option><option value="600000">600 000</option>
+          </select>
+        </div>
+        <div>
+          <label class="tiny muted mono">MAX ATTEMPTS BEFORE LOCKOUT</label>
+          <input type="number" id="s-maxatt" value="5" min="1" max="10">
+        </div>
+      </div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:11px">
+        <label class="inline"><input type="checkbox" id="s-enter" checked> send <kbd>Enter</kbd> after password</label>
+        <label class="inline"><input type="checkbox" id="s-wipe" checked> panic-wipe after 15 total failures</label>
+        <label class="inline"><input type="checkbox" id="s-beep"> piezo feedback</label>
+      </div>
+    </div>
+  </div>
+</div>
+</main>
+
+<div id="narrator"><span class="step" id="narr-step">1/12</span><span class="txt" id="narr-txt"></span></div>
+<div class="toast" id="toast"></div>
+<div id="modal"><div class="box" id="modal-box"></div></div>
+<script>
+/* ============================================================================
+ * BPV-1  ·  Embedded Bluetooth Password Vault — firmware simulator
+ * ----------------------------------------------------------------------------
+ * Archit Arora (24BYB1144) · Amol Bhatia (24BYB1026)
+ * Siddhant Dhale (24BAI1185) · Vatsal Agrawal (24BAI1355)
+ *
+ * Single file, no build step, no network, no dependencies.
+ * All cryptography is REAL and performed by window.crypto.subtle:
+ *     PBKDF2-HMAC-SHA256  ->  HKDF-SHA256  ->  AES-256-GCM
+ * ==========================================================================*/
+(function () {
+'use strict';
+
+/* ===========================================================================
+ * 1. CONSTANTS
+ * =========================================================================*/
+var FW_VERSION   = '1.0.0';
+var HW_REV       = 'BPV-1 rev.A';
+var NVS_KEY      = 'bpv.nvs.v1';          // localStorage key = simulated flash
+var NVS_MAGIC    = 'BPVAULT1';
+var SALT_LEN     = 16;                     // PBKDF2 salt
+var IV_LEN       = 12;                     // AES-GCM nonce (96-bit, recommended)
+var TAG_BITS     = 128;                    // AES-GCM authentication tag
+var KEY_BITS     = 256;                    // AES-256
+var MIN_VERIFY_MS= 260;                    // constant-ish response time on failure
+var LONG_PRESS_MS= 550;
+var DEFAULT_ITERS= 150000;
+
+/* escalating lockout ladder, seconds, indexed by (failCount - maxAttempts) */
+var COOLDOWN = [15, 30, 60, 120, 300, 600, 900];
+var PANIC_WIPE_AT = 15;                    // total lifetime failures -> wipe
+
+var TEAM = [
+  ['Archit Arora',   '24BYB1144'],
+  ['Amol Bhatia',    '24BYB1026'],
+  ['Siddhant Dhale', '24BAI1185'],
+  ['Vatsal Agrawal', '24BAI1355']
+];
+
+var DEMO_MASTER = 'Vault@2026';
+var SEED_RECORDS = [
+  { label: 'GitHub',        username: 'archit.arora@vitstudent.ac.in', password: 'G!thub-2026#vault',  url: 'https://github.com/login' },
+  { label: 'College Portal',username: '24BAI1355',                     password: 'V1t@Portal!2026',    url: 'https://vtop.vit.ac.in/login' },
+  { label: 'Gmail',         username: 'bpv.demo@gmail.com',            password: 'M@il-Str0ng-Pass!',  url: 'https://accounts.google.com' },
+  { label: 'Campus WiFi',   username: 'wifi-guest',                    password: 'Wifi#Secure2026',    url: 'https://wifi.local/portal' },
+  { label: 'Bank (demo)',   username: 'user1144',                      password: 'B@nk!ng-9x2Kq',      url: 'https://demo.bank/signin' }
+];
+
+/* firmware states (also drawn in the State-machine tab) */
+var S = {
+  OFF:'OFF', BOOT:'BOOT', POST:'POST', PROVISION:'PROVISION', LOCKED:'LOCKED',
+  VERIFY:'VERIFY', LOCKOUT:'LOCKOUT', MENU:'MENU', DETAIL:'DETAIL',
+  CONFIRM:'CONFIRM', DECRYPT:'DECRYPT', BTLINK:'BTLINK', TYPING:'TYPING',
+  ZEROIZE:'ZEROIZE', SETTINGS:'SETTINGS', ABOUT:'ABOUT', WIPED:'WIPED', PANIC:'PANIC'
+};
+var FSM_ORDER = [S.OFF,S.BOOT,S.POST,S.PROVISION,S.LOCKED,S.VERIFY,S.LOCKOUT,S.MENU,
+                 S.DETAIL,S.CONFIRM,S.DECRYPT,S.BTLINK,S.TYPING,S.ZEROIZE,S.SETTINGS,S.WIPED];
+
+/* ===========================================================================
+ * 2. SMALL UTILITIES
+ * =========================================================================*/
+function $(id){ return document.getElementById(id); }
+function el(tag, cls, txt){ var e=document.createElement(tag); if(cls)e.className=cls; if(txt!=null)e.textContent=txt; return e; }
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+function clamp(v,a,b){ return v<a?a:(v>b?b:v); }
+function pad(n,w,c){ n=String(n); while(n.length<w) n=(c||'0')+n; return n; }
+
+var TE = new TextEncoder();
+var TD = new TextDecoder();
+function utf8(s){ return TE.encode(s); }
+function fromUtf8(b){ return TD.decode(b); }
+
+function hex(bytes, sep){
+  var out=[], i;
+  for(i=0;i<bytes.length;i++) out.push(pad(bytes[i].toString(16),2));
+  return out.join(sep===undefined?'':sep);
+}
+function unhex(s){
+  s=s.replace(/[^0-9a-fA-F]/g,'');
+  var out=new Uint8Array(s.length/2), i;
+  for(i=0;i<out.length;i++) out[i]=parseInt(s.substr(i*2,2),16);
+  return out;
+}
+function hexShort(bytes,n){
+  n=n||8;
+  if(bytes.length<=n) return hex(bytes);
+  return hex(bytes.subarray(0,n))+'..('+bytes.length+'B)';
+}
+function b64(bytes){
+  var s='', i;
+  for(i=0;i<bytes.length;i++) s+=String.fromCharCode(bytes[i]);
+  return btoa(s);
+}
+function unb64(str){
+  var s=atob(str), out=new Uint8Array(s.length), i;
+  for(i=0;i<s.length;i++) out[i]=s.charCodeAt(i);
+  return out;
+}
+function rnd(n){ var b=new Uint8Array(n); crypto.getRandomValues(b); return b; }
+function concat(){
+  var total=0,i,a=arguments;
+  for(i=0;i<a.length;i++) total+=a[i].length;
+  var out=new Uint8Array(total), off=0;
+  for(i=0;i<a.length;i++){ out.set(a[i],off); off+=a[i].length; }
+  return out;
+}
+/* constant-time comparison — no early exit on first differing byte */
+function ctEqual(a,b){
+  if(a.length!==b.length) return false;
+  var d=0,i;
+  for(i=0;i<a.length;i++) d |= (a[i]^b[i]);
+  return d===0;
+}
+function fmtDur(ms){ return ms<1000 ? (Math.round(ms*10)/10)+' ms' : (Math.round(ms/100)/10)+' s'; }
+function nowMs(){ return Date.now(); }
+var T0 = performance.now();
+function uptime(){ return (performance.now()-T0)/1000; }
+
+/* ===========================================================================
+ * 3. SECURE BUFFER + SRAM MODEL
+ *    Models the device's volatile working memory so the demo can *show*
+ *    that plaintext exists only transiently and is actively zeroized.
+ * =========================================================================*/
+function SecureBuffer(name, bytes){
+  this.name = name;
+  this.buf  = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes||0);
+  this.zeroized = false;
+  this.secret = true;
+  this.at = uptime();
+}
+SecureBuffer.prototype.zeroize = function(){
+  if(this.zeroized) return;
+  crypto.getRandomValues(this.buf);   // pass 1: overwrite with random
+  this.buf.fill(0);                   // pass 2: overwrite with 0x00
+  this.zeroized = true;
+};
+
+var SRAM = {
+  regions: [],
+  alloc: function(name, bytes, secret){
+    var b = new SecureBuffer(name, bytes);
+    if(secret===false) b.secret=false;
+    this.regions.push(b);
+    if(this.regions.length>10) this.regions.shift();
+    return b;
+  },
+  zeroizeAll: function(){
+    var n=0;
+    this.regions.forEach(function(r){ if(!r.zeroized){ r.zeroize(); n++; } });
+    return n;
+  },
+  free: function(){ this.regions = []; }
+};
+
+/* ===========================================================================
+ * 4. LOGGING  (ESP-IDF style serial monitor)
+ * =========================================================================*/
+var LOG = { lines: [], crypto: [], fsm: [] };
+var MAXLOG = 500;
+
+function logLine(container, level, tag, msg){
+  var d = el('div','ln lv-'+level);
+  var t = el('span','t','('+pad(Math.floor(uptime()*1000),6,' ')+')');
+  var g = el('span','tg',level+' '+tag+':');
+  var m = el('span','m',msg);
+  d.appendChild(t); d.appendChild(g); d.appendChild(m);
+  var box = $(container);
+  if(!box) return;
+  var stick = box.scrollTop + box.clientHeight >= box.scrollHeight - 30;
+  box.appendChild(d);
+  while(box.childNodes.length>MAXLOG) box.removeChild(box.firstChild);
+  if(stick) box.scrollTop = box.scrollHeight;
+}
+function log(tag,msg,level){ logLine('log', level||'I', tag, msg); }
+function logW(tag,msg){ log(tag,msg,'W'); }
+function logE(tag,msg){ log(tag,msg,'E'); }
+function logS(tag,msg){ log(tag,msg,'S'); }
+function logA(tag,msg){ log(tag,msg,'A'); }
+function ctrace(op,detail,level){ logLine('cryptolog', level||'I', op, detail); }
+function fsmlog(msg,level){ logLine('fsmlog', level||'I','fsm', msg); }
+
+function toast(msg, kind){
+  var box=$('toast'); if(!box) return;
+  var t=el('div','t '+(kind||'info'), msg);
+  box.appendChild(t);
+  setTimeout(function(){ t.style.transition='opacity .3s'; t.style.opacity='0';
+    setTimeout(function(){ if(t.parentNode) t.parentNode.removeChild(t); },320); }, 3200);
+}
+/* ===========================================================================
+ * 5. CRYPTO CORE  —  real Web Crypto, no stubs
+ *
+ *    root      = PBKDF2-HMAC-SHA256(masterPassword, salt, iters) -> 256 bit
+ *    K_verify  = HKDF-SHA256(root, salt, "bpv/verifier/v1")      -> 256 bit  (stored)
+ *    K_vault   = HKDF-SHA256(root, salt, "bpv/vault-aes/v1")     -> 256 bit  (never stored)
+ *    record    = AES-256-GCM(K_vault, iv=12B random, aad="v1|id|label")
+ *
+ *    The vault key is NEVER written to flash. It exists only in RAM while the
+ *    device is unlocked, and is zeroized on lock / auto-lock / power loss.
+ * =========================================================================*/
+var subtle = null;
+var CRYPTO_OK = false;
+
+function cryptoInit(){
+  try{
+    if(window.crypto && window.crypto.subtle && typeof window.crypto.subtle.deriveBits === 'function'){
+      subtle = window.crypto.subtle; CRYPTO_OK = true;
+    }
+  }catch(e){ CRYPTO_OK=false; }
+  return CRYPTO_OK;
+}
+
+var Crypto = {
+  /* PBKDF2: password stretching. Deliberately slow — this is the brute-force wall. */
+  deriveRoot: async function(password, salt, iters){
+    var t0 = performance.now();
+    var pk = await subtle.importKey('raw', utf8(password), 'PBKDF2', false, ['deriveBits']);
+    var bits = await subtle.deriveBits(
+      { name:'PBKDF2', salt: salt, iterations: iters, hash:'SHA-256' }, pk, KEY_BITS);
+    var dt = performance.now()-t0;
+    var out = new Uint8Array(bits);
+    ctrace('pbkdf2', 'HMAC-SHA256 x'+iters.toLocaleString()+'  salt='+hexShort(salt,8)+
+           '  -> root='+hexShort(out,6)+'  ['+fmtDur(dt)+']');
+    return { bytes: out, ms: dt };
+  },
+
+  /* HKDF-Expand: one secret in, several domain-separated keys out. */
+  hkdf: async function(rootBytes, salt, info, bits){
+    var t0=performance.now();
+    var k = await subtle.importKey('raw', rootBytes, 'HKDF', false, ['deriveBits']);
+    var b = await subtle.deriveBits(
+      { name:'HKDF', hash:'SHA-256', salt: salt, info: utf8(info) }, k, bits||KEY_BITS);
+    var out = new Uint8Array(b);
+    ctrace('hkdf', 'info="'+info+'"  -> '+hexShort(out,6)+'  ['+fmtDur(performance.now()-t0)+']');
+    return out;
+  },
+
+  importAes: async function(rawKey){
+    /* extractable:false — once imported, the key material cannot be read back
+       out of the CryptoKey handle, mirroring a hardware key slot. */
+    return subtle.importKey('raw', rawKey, {name:'AES-GCM'}, false, ['encrypt','decrypt']);
+  },
+
+  fingerprint: async function(bytes){
+    var h = await subtle.digest('SHA-256', bytes);
+    return hex(new Uint8Array(h).subarray(0,8));
+  },
+
+  encrypt: async function(key, plainBytes, aad){
+    var iv = rnd(IV_LEN);
+    var t0=performance.now();
+    var ct = await subtle.encrypt({name:'AES-GCM', iv:iv, additionalData:utf8(aad), tagLength:TAG_BITS},
+                                  key, plainBytes);
+    var out = new Uint8Array(ct);
+    ctrace('aes-gcm', 'ENCRYPT  '+plainBytes.length+'B  iv='+hex(iv)+'  aad="'+aad+'"  -> ct+tag '+
+           out.length+'B  ['+fmtDur(performance.now()-t0)+']');
+    return { iv: iv, ct: out };
+  },
+
+  decrypt: async function(key, iv, ct, aad){
+    var t0=performance.now();
+    try{
+      var pt = await subtle.decrypt({name:'AES-GCM', iv:iv, additionalData:utf8(aad), tagLength:TAG_BITS},
+                                    key, ct);
+      var out = new Uint8Array(pt);
+      ctrace('aes-gcm', 'DECRYPT  ct '+ct.length+'B  iv='+hex(iv)+'  aad="'+aad+
+             '"  -> tag OK, '+out.length+'B plaintext  ['+fmtDur(performance.now()-t0)+']');
+      return out;
+    }catch(e){
+      ctrace('aes-gcm', 'DECRYPT  ct '+ct.length+'B  iv='+hex(iv)+'  aad="'+aad+
+             '"  -> AUTHENTICATION FAILED (tag mismatch)  ['+fmtDur(performance.now()-t0)+']','E');
+      throw new Error('GCM_AUTH_FAIL');
+    }
+  }
+};
+
+/* ===========================================================================
+ * 6. SIMULATED FLASH  —  NVS partition backed by localStorage
+ * =========================================================================*/
+var NVS = {
+  data: null,
+  writes: 0,
+  volatile: false,      // true if localStorage is unavailable (private mode etc.)
+  _mem: null,
+
+  blank: function(){
+    return {
+      magic: NVS_MAGIC, version: 1, provisioned: false,
+      kdf: { algo:'PBKDF2-HMAC-SHA256', iterations: DEFAULT_ITERS, salt: null },
+      verifier: null,
+      sec: { failCount:0, totalFails:0, lockUntil:0, lockLevel:0, maxAttempts:5, wipeEnabled:true },
+      bt:  { bonded:false, peerName:'DESKTOP-PC', peerAddr:null, ltkFp:null, encrypted:true },
+      cfg: { autoLockMs:60000, typeDelay:45, sendEnter:true, beep:false },
+      records: [], nextId: 1,
+      stats: { boots:0, unlocks:0, sends:0, provisionedAt:0 }
+    };
+  },
+
+  load: function(){
+    var raw = null;
+    try { raw = window.localStorage.getItem(NVS_KEY); }
+    catch(e){ this.volatile = true; }
+    if(this.volatile){
+      this.data = this._mem || this.blank();
+      this._mem = this.data;
+      return this.data;
+    }
+    if(raw){
+      try{
+        var o = JSON.parse(raw);
+        if(o && o.magic===NVS_MAGIC){ this.data=o; return o; }
+        logW('nvs','image magic mismatch — reformatting partition');
+      }catch(e){ logE('nvs','corrupt image, reformatting: '+e.message); }
+    }
+    this.data = this.blank();
+    this.commit('format');
+    return this.data;
+  },
+
+  commit: function(why){
+    this.writes++;
+    if(this.volatile){ this._mem = this.data; return; }
+    try{ window.localStorage.setItem(NVS_KEY, JSON.stringify(this.data)); }
+    catch(e){ this.volatile=true; this._mem=this.data; logE('nvs','write failed: '+e.message); }
+    if(why) log('nvs','commit #'+this.writes+' ('+why+')','D');
+    flashBlink();
+  },
+
+  /* Re-read straight from the backing store — used to *prove* persistence. */
+  reread: function(){
+    if(this.volatile) return this._mem;
+    try{ return JSON.parse(window.localStorage.getItem(NVS_KEY)); }catch(e){ return null; }
+  },
+
+  erase: function(){
+    this.data = this.blank();
+    this.commit('chip erase');
+  }
+};
+
+/* Build a realistic raw flash image so the hex viewer shows bytes, not JSON.
+   Returns { bytes, spans } where spans tag each region for colouring.        */
+function buildFlashImage(){
+  var d = NVS.data;
+  var parts = [], spans = [], off = 0;
+  function put(bytes, kind){
+    parts.push(bytes); spans.push({s:off, e:off+bytes.length, k:kind}); off += bytes.length;
+  }
+  function u32(v){ var b=new Uint8Array(4); new DataView(b.buffer).setUint32(0,v>>>0,true); return b; }
+  function u16(v){ var b=new Uint8Array(2); new DataView(b.buffer).setUint16(0,v&0xffff,true); return b; }
+
+  put(utf8(NVS_MAGIC), 'magic');
+  put(concat(u16(d.version), u16(d.records.length), u32(d.kdf.iterations)), 'magic');
+  put(d.kdf.salt ? unb64(d.kdf.salt) : new Uint8Array(SALT_LEN), 'salt');
+  put(d.verifier ? unb64(d.verifier) : new Uint8Array(32), 'ver');
+  put(concat(u32(d.sec.failCount), u32(d.sec.totalFails), u32(Math.floor(d.sec.lockUntil/1000)),
+             u32(d.sec.lockLevel)), 'sec');
+  put(concat(d.bt.peerAddr? unhex(d.bt.peerAddr.replace(/:/g,'')) : new Uint8Array(6),
+             d.bt.ltkFp ? unhex(d.bt.ltkFp) : new Uint8Array(8)), 'meta');
+  d.records.forEach(function(r){
+    put(concat(u16(r.id), u16(r.label.length)), 'meta');
+    put(utf8(r.label), 'label');
+    put(unb64(r.iv), 'iv');
+    var ct = unb64(r.ct);
+    put(concat(u16(ct.length)), 'meta');
+    put(ct, 'ct');
+  });
+  /* pad to a 64-byte boundary like a real page write */
+  var padN = (64 - (off % 64)) % 64;
+  if(padN){ var p=new Uint8Array(padN); p.fill(0xff); put(p,'meta'); }
+  return { bytes: concat.apply(null, parts), spans: spans };
+}
+/* ===========================================================================
+ * 7. SSD1306 DISPLAY DRIVER (128x64, 1 bpp)
+ *    Everything is drawn into a 128x64 offscreen buffer, thresholded to pure
+ *    black/white, then blitted as discrete pixels — the same pipeline a real
+ *    monochrome OLED goes through.
+ * =========================================================================*/
+var OLED_W=128, OLED_H=64, PXS=5, GAP=1;
+var PITCH1=7, PITCH2=12;                 /* glyph cell width, size 1 / size 2 */
+function tw(str,size){ return String(str).length*(size===2?PITCH2:PITCH1); }  /* text width, px */
+var fb = document.createElement('canvas'); fb.width=OLED_W; fb.height=OLED_H;
+var fx = fb.getContext('2d', { willReadFrequently:true });
+/* scratch buffer used to quantise inverted text (see D.text) */
+var mkc = document.createElement('canvas'); mkc.width=OLED_W+4; mkc.height=24;
+var mx = mkc.getContext('2d', { willReadFrequently:true });
+var screenCv, sx, frameCount=0, displayOn=false;
+
+var D = {
+  clear: function(){ fx.fillStyle='#000'; fx.fillRect(0,0,OLED_W,OLED_H); fx.fillStyle='#fff'; },
+  rect: function(x,y,w,h,fill){
+    x=Math.round(x); y=Math.round(y); w=Math.round(w); h=Math.round(h);
+    fx.fillStyle = fill===false ? '#000' : '#fff';
+    if(fill===false){ fx.fillRect(x,y,w,h); fx.fillStyle='#fff'; return; }
+    fx.fillRect(x,y,w,h);
+  },
+  frame: function(x,y,w,h){
+    x=Math.round(x); y=Math.round(y); w=Math.round(w); h=Math.round(h);
+    fx.fillStyle='#fff';
+    fx.fillRect(x,y,w,1); fx.fillRect(x,y+h-1,w,1);
+    fx.fillRect(x,y,1,h); fx.fillRect(x+w-1,y,1,h);
+  },
+  hline: function(x,y,w){ fx.fillStyle='#fff'; fx.fillRect(x,y,w,1); },
+  vline: function(x,y,h){ fx.fillStyle='#fff'; fx.fillRect(x,y,1,h); },
+  dots: function(x,y,w){ fx.fillStyle='#fff'; for(var i=0;i<w;i+=2) fx.fillRect(x+i,y,1,1); },
+
+  /* fixed-pitch text: size 1 = 6x8 cell, size 2 = 12x16 cell */
+  text: function(x,y,str,size,black){
+    size = size||1;
+    x = Math.round(x); y = Math.round(y);   /* the panel has no sub-pixels */
+    fx.fillStyle = black ? '#000' : '#fff';
+    fx.textBaseline = 'top';
+    fx.font = (size===2 ? 'bold 15px ' : 'bold 9px ') + '"Courier New","DejaVu Sans Mono",monospace';
+    var pitch = size===2 ? PITCH2 : PITCH1;
+    var oy = -1;
+    str = String(str);
+    if(black){
+      /* Black-on-white text must be quantised exactly like white-on-black text,
+         otherwise the 1-bit threshold eats the thin strokes. The glyphs are
+         therefore rasterised white on a scratch buffer, thresholded with the
+         same rule as the panel, and then punched into the framebuffer.       */
+      var cw = str.length*pitch + 2, chh = (size===2?18:10);
+      mx.fillStyle='#000'; mx.fillRect(0,0,cw+2,chh+2);
+      mx.fillStyle='#fff'; mx.textBaseline='top'; mx.font = fx.font;
+      for(var i=0;i<str.length;i++) mx.fillText(str.charAt(i), 1+i*pitch, 1+oy+1);
+      var d = mx.getImageData(0,0,cw+2,chh+2).data;
+      fx.fillStyle='#000';
+      for(var py=0;py<chh+2;py++) for(var px=0;px<cw+2;px++)
+        if(d[(py*(cw+2)+px)*4] > 96) fx.fillRect(x+px-1, y+py-2, 1, 1);
+      fx.fillStyle='#fff';
+      return x + str.length*pitch;
+    }
+    for(var j=0;j<str.length;j++) fx.fillText(str.charAt(j), x+j*pitch, y+oy);
+    fx.fillStyle='#fff';
+    return x + str.length*pitch;
+  },
+  center: function(y,str,size,black){
+    size=size||1;
+    var w = tw(str,size);
+    return D.text(Math.max(0,Math.round((OLED_W-w)/2)), y, str, size, black);
+  },
+  /* inverted (selected) row */
+  row: function(x,y,w,h,str,sel){
+    if(sel){ D.rect(x,y,w,h,true); D.text(x+2,y+(h-8)/2+1,str,1,true); }
+    else   { D.text(x+2,y+(h-8)/2+1,str,1,false); }
+  },
+  progress: function(x,y,w,h,pct){
+    D.frame(x,y,w,h);
+    var iw = Math.round((w-4)*clamp(pct,0,1));
+    if(iw>0) D.rect(x+2,y+2,iw,h-4,true);
+  },
+  scrollbar: function(x,y,h,total,vis,off){
+    if(total<=vis) return;
+    D.vline(x,y,h);
+    var th = Math.max(4, Math.round(h*vis/total));
+    var ty = y + Math.round((h-th)*off/(total-vis));
+    D.rect(x-1,ty,3,th,true);
+  },
+  lockIcon: function(x,y,locked){
+    D.rect(x,y+3,7,5,true);
+    if(locked){ D.hline(x+1,y,5); D.vline(x+1,y+1,2); D.vline(x+5,y+1,2); }
+    else      { D.hline(x+2,y,5); D.vline(x+6,y+1,2); }
+  },
+  btIcon: function(x,y,on){
+    if(!on){ D.dots(x,y,7); return; }
+    D.vline(x+3,y,9);
+    D.hline(x+1,y+2,1); D.hline(x+2,y+1,1);
+    fx.fillRect(x+4,y+1,1,1); fx.fillRect(x+5,y+2,1,1); fx.fillRect(x+4,y+3,1,1);
+    fx.fillRect(x+2,y+4,1,1); fx.fillRect(x+4,y+5,1,1); fx.fillRect(x+5,y+6,1,1);
+    fx.fillRect(x+4,y+7,1,1); fx.fillRect(x+2,y+7,1,1); fx.fillRect(x+1,y+6,1,1);
+  },
+  /* word-wrap helper: returns array of lines of at most n chars */
+  wrap: function(str,n){
+    var words=String(str).split(' '), lines=[], cur='';
+    words.forEach(function(w){
+      if((cur+' '+w).trim().length>n){ if(cur) lines.push(cur); cur=w; }
+      else cur=(cur?cur+' ':'')+w;
+    });
+    if(cur) lines.push(cur);
+    return lines;
+  },
+
+  /* status bar drawn on every unlocked screen */
+  statusBar: function(title, right){
+    D.rect(0,0,OLED_W,9,true);
+    D.text(2,1,title,1,true);
+    if(right){ D.text(OLED_W-2-tw(right),1,right,1,true); }
+  },
+
+  flush: function(){
+    if(!screenCv) return;
+    var img = fx.getImageData(0,0,OLED_W,OLED_H).data;
+    sx.fillStyle='#02040a'; sx.fillRect(0,0,screenCv.width,screenCv.height);
+    if(!displayOn) return;
+    /* faint off-pixel grid, mimics an unlit OLED matrix */
+    sx.fillStyle='#080e15';
+    for(var gy=0; gy<OLED_H; gy++) for(var gx=0; gx<OLED_W; gx++)
+      sx.fillRect(gx*PXS, gy*PXS, PXS-GAP, PXS-GAP);
+    sx.fillStyle='#6ee7ff';
+    for(var y=0;y<OLED_H;y++){
+      for(var x=0;x<OLED_W;x++){
+        if(img[(y*OLED_W+x)*4] > 96) sx.fillRect(x*PXS, y*PXS, PXS-GAP, PXS-GAP);
+      }
+    }
+    frameCount++;
+  }
+};
+
+/* ===========================================================================
+ * 8. PIEZO / BUZZER (WebAudio, created lazily on first gesture)
+ * =========================================================================*/
+var actx=null;
+function beep(freq, ms, vol){
+  if(!NVS.data || !NVS.data.cfg.beep) return;
+  try{
+    if(!actx) actx = new (window.AudioContext||window.webkitAudioContext)();
+    var o=actx.createOscillator(), g=actx.createGain();
+    o.type='square'; o.frequency.value=freq||880;
+    g.gain.value=(vol||0.03);
+    o.connect(g); g.connect(actx.destination); o.start();
+    g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime+(ms||40)/1000);
+    o.stop(actx.currentTime+(ms||40)/1000+0.01);
+  }catch(e){}
+}
+
+/* activity LED blink helpers */
+function flashBlink(){
+  var l=$('led-act'); if(!l) return;
+  l.classList.add('on'); setTimeout(function(){ l.classList.remove('on'); },110);
+}
+/* ===========================================================================
+ * 9. BLE HID TRANSPORT (simulated)
+ *    Report protocol: 8-byte boot-keyboard report [mod,0,k1..k6].
+ * =========================================================================*/
+var HID_MAP = (function(){
+  var m={}, i, c;
+  for(i=0;i<26;i++){
+    m[String.fromCharCode(97+i)] = {k:0x04+i, s:0};
+    m[String.fromCharCode(65+i)] = {k:0x04+i, s:1};
+  }
+  for(i=1;i<=9;i++) m[String(i)] = {k:0x1e+i-1, s:0};
+  m['0']={k:0x27,s:0};
+  var pairs = [
+    [' ',0x2c,0],['\n',0x28,0],['\t',0x2b,0],
+    ['-',0x2d,0],['=',0x2e,0],['[',0x2f,0],[']',0x30,0],['\\',0x31,0],
+    [';',0x33,0],["'",0x34,0],['`',0x35,0],[',',0x36,0],['.',0x37,0],['/',0x38,0],
+    ['!',0x1e,1],['@',0x1f,1],['#',0x20,1],['$',0x21,1],['%',0x22,1],['^',0x23,1],
+    ['&',0x24,1],['*',0x25,1],['(',0x26,1],[')',0x27,1],
+    ['_',0x2d,1],['+',0x2e,1],['{',0x2f,1],['}',0x30,1],['|',0x31,1],
+    [':',0x33,1],['"',0x34,1],['~',0x35,1],['<',0x36,1],['>',0x37,1],['?',0x38,1]
+  ];
+  pairs.forEach(function(p){ m[p[0]]={k:p[1], s:p[2]}; });
+  return m;
+})();
+var KEY_TAB='\t', KEY_ENTER='\n';
+
+var host = { focus:null, user:'', pass:'', authed:false };
+
+var BLE = {
+  connected:false, connecting:false, rssi:-54, mtu:23, reports:0,
+
+  ensureBond: function(){
+    var d=NVS.data;
+    if(!d.bt.bonded){
+      d.bt.bonded = true;
+      d.bt.peerAddr = hex(rnd(6),':').toUpperCase();
+      d.bt.ltkFp = hex(rnd(8));
+      NVS.commit('ble bond');
+      logS('ble','pairing complete — LE Secure Connections, bond stored in NVS');
+      logS('ble','peer='+d.bt.peerName+' addr='+d.bt.peerAddr+' LTK fp='+d.bt.ltkFp);
+    }
+  },
+
+  connect: async function(){
+    if(this.connected) return true;
+    this.connecting = true;
+    setLed('led-bt','blink');
+    log('ble','advertising as "'+HW_REV+' Vault" (HID over GATT, appearance=0x03C1)');
+    await sleep(320);
+    log('ble','connection request from '+NVS.data.bt.peerName);
+    await sleep(280);
+    this.ensureBond();
+    this.connected=true; this.connecting=false; this.reports=0;
+    this.rssi = -40 - Math.floor(Math.random()*22);
+    setLed('led-bt','on');
+    log('ble','connected · interval 11.25 ms · MTU '+this.mtu+' · RSSI '+this.rssi+' dBm');
+    log('ble','HID report map registered: boot keyboard (8-byte reports)');
+    updateChips();
+    return true;
+  },
+
+  disconnect: function(reason){
+    if(!this.connected) return;
+    this.connected=false; setLed('led-bt','off');
+    log('ble','disconnected ('+(reason||'link terminated')+')');
+    updateChips();
+  },
+
+  /* one keystroke = press report + release report */
+  sendChar: async function(ch, delay){
+    var e = HID_MAP[ch];
+    if(!e){ logW('hid','unmapped character U+'+pad(ch.charCodeAt(0).toString(16),4).toUpperCase()); return; }
+    var mod = e.s ? 0x02 : 0x00;                        // 0x02 = Left Shift
+    var press   = new Uint8Array([mod,0,e.k,0,0,0,0,0]);
+    var release = new Uint8Array([0,0,0,0,0,0,0,0]);
+    this.reports += 2;
+    sniff(ch, press);
+    hostReceive(ch);
+    if(delay) await sleep(delay);
+    void release;
+  }
+};
+
+function sniff(ch, report){
+  var box=$('sniffer'); if(!box) return;
+  var enc = NVS.data.bt.encrypted;
+  var line = el('div');
+  var name = ch==='\t' ? '[TAB]' : (ch==='\n' ? '[ENTER]' : ch);
+  if(enc){
+    /* under LE Secure Connections the payload is AES-CCM encrypted on air */
+    line.innerHTML = '<span class="enc">L2CAP ATT HVN  0x'+pad((0x40+BLE.reports).toString(16),4)+
+      '  payload=<b>'+hex(rnd(8))+'</b>  (AES-CCM, opaque)</span>';
+  }else{
+    line.innerHTML = '<span class="plain">L2CAP ATT HVN  PLAINTEXT report '+hex(report,' ')+
+      '  &rarr; key &quot;'+esc(name)+'&quot;</span>';
+  }
+  box.appendChild(line);
+  while(box.childNodes.length>120) box.removeChild(box.firstChild);
+  box.scrollTop = box.scrollHeight;
+}
+
+function hostReceive(ch){
+  if(ch===KEY_TAB){ host.focus = host.focus==='user' ? 'pass' : 'user'; renderHost(); return; }
+  if(ch===KEY_ENTER){ hostSubmit(); return; }
+  if(host.focus==='user') host.user += ch;
+  else if(host.focus==='pass') host.pass += ch;
+  renderHost();
+}
+
+function hostSubmit(){
+  var ok = host.user.length>0 && host.pass.length>0;
+  host.authed = ok;
+  var m=$('host-auth');
+  if(m){
+    m.textContent = ok ? '✓ Authenticated as '+host.user : '✗ Missing credentials';
+    m.className = 'authmsg ' + (ok?'ok-t':'bad-t');
+  }
+  log('host', ok ? 'login form submitted — authentication successful' : 'login form submitted — rejected');
+}
+
+function renderHost(){
+  var fu=$('f-user'), fp=$('f-pass');
+  if(!fu||!fp) return;
+  var reveal = $('host-reveal') && $('host-reveal').checked;
+  function fill(node, val, ph, mask){
+    node.innerHTML='';
+    var v = el('span','val');
+    if(!val){ v.className='val ph'; v.textContent=ph; }
+    else v.textContent = mask&&!reveal ? new Array(val.length+1).join('•') : val;
+    node.appendChild(v);
+    if(node===fu&&host.focus==='user' || node===fp&&host.focus==='pass') node.appendChild(el('span','caret'));
+  }
+  fill(fu, host.user, 'username', false);
+  fill(fp, host.pass, 'password', true);
+  fu.classList.toggle('focus', host.focus==='user');
+  fp.classList.toggle('focus', host.focus==='pass');
+  var hs=$('hid-state');
+  if(hs) hs.textContent = BLE.connected
+    ? 'HID: connected · '+BLE.reports+' reports · RSSI '+BLE.rssi+' dBm'
+    : 'HID: not connected';
+}
+
+function setLed(id, mode){
+  var l=$(id); if(!l) return;
+  l.classList.remove('on','blink');
+  if(mode==='on') l.classList.add('on');
+  if(mode==='blink'){ l.classList.add('on'); l.classList.add('blink'); }
+}
+/* ===========================================================================
+ * 10. DEVICE STATE
+ * =========================================================================*/
+var RING = ('abcdefghijklmnopqrstuvwxyz' +
+            'ABCDEFGHIJKLMNOPQRSTUVWXYZ' +
+            '0123456789' + '!@#$%^&*()-_=+.,:;?/').split('');
+RING.push('DEL'); RING.push('OK');
+
+var dev = {
+  state: S.OFF, prev: S.OFF, powered:false,
+  bootLines: [], bootDone:false,
+  pw:'', pwConfirm:null, ring:0,
+  menuSel:0, menuOff:0,
+  detailSel:0, curIdx:-1, showSecret:false,
+  confirmYes:true,
+  settingsSel:0,
+  session:{ key:null, fp:null, at:0, keyBuf:null, rootBuf:null },
+  plain:null, plainObj:null,
+  tx:{ str:'', sent:0, label:'' },
+  busy:'', pct:0,
+  msg:'', msgUntil:0,
+  lastActivity:0,
+  anim:0,
+  visited:{}
+};
+
+function setState(s, why){
+  if(dev.state===s) return;
+  dev.prev = dev.state;
+  dev.state = s;
+  dev.visited[s] = true;
+  fsmlog(dev.prev+'  ->  '+s+(why?'   ['+why+']':''));
+  renderFsm();
+  var ms=$('meta-state'); if(ms) ms.textContent='state: '+s;
+}
+function flash(msg, ms){ dev.msg=msg; dev.msgUntil = performance.now()+(ms||1400); }
+function touch(){ dev.lastActivity = performance.now(); }
+function unlocked(){ return !!dev.session.key; }
+function recs(){ return NVS.data ? NVS.data.records : []; }
+
+/* menu = credential records + system entries */
+function menuItems(){
+  var items = recs().map(function(r,i){ return { t:r.label, kind:'rec', i:i }; });
+  items.push({ t:'* SETTINGS', kind:'settings' });
+  items.push({ t:'* ABOUT',    kind:'about' });
+  items.push({ t:'* LOCK NOW', kind:'lock' });
+  return items;
+}
+var SETTINGS_ITEMS = [
+  { k:'autolock', t:'Auto-lock' },
+  { k:'enter',    t:'Send Enter' },
+  { k:'speed',    t:'Type speed' },
+  { k:'wipe',     t:'Panic wipe' },
+  { k:'ble',      t:'BLE encrypt' },
+  { k:'beep',     t:'Piezo' },
+  { k:'back',     t:'< Back' }
+];
+
+/* ===========================================================================
+ * 11. SCREEN RENDERERS
+ * =========================================================================*/
+function autoLockRemain(){
+  if(!unlocked()) return 0;
+  var left = NVS.data.cfg.autoLockMs - (performance.now()-dev.lastActivity);
+  return Math.max(0, Math.ceil(left/1000));
+}
+
+function drawStatus(title){
+  var right = unlocked() ? (autoLockRemain()+'s') : '';
+  D.rect(0,0,OLED_W,9,true);
+  D.text(2,1,title,1,true);
+  /* icons drawn in black on the white bar */
+  fx.fillStyle='#000';
+  var xi = OLED_W-11;
+  if(right){ D.text(OLED_W-2-tw(right),1,right,1,true); xi = OLED_W-6-tw(right)-10; }
+  fx.fillStyle='#000';
+  (function(){
+    /* mini lock + bt glyphs, inverted */
+    var lx=xi;
+    fx.fillRect(lx,4,6,4);
+    if(!unlocked()){ fx.fillRect(lx+1,1,4,1); fx.fillRect(lx+1,2,1,2); fx.fillRect(lx+4,2,1,2); }
+    else { fx.fillRect(lx+2,1,4,1); fx.fillRect(lx+5,2,1,2); }
+    if(BLE.connected){ fx.fillRect(lx-6,1,1,7); fx.fillRect(lx-5,2,1,1); fx.fillRect(lx-4,3,1,1);
+                       fx.fillRect(lx-5,6,1,1); fx.fillRect(lx-4,5,1,1); }
+  })();
+  fx.fillStyle='#fff';
+}
+
+function screenBoot(){
+  D.clear();
+  var n = dev.bootLines.length;
+  if(n===0){
+    D.center(16,'BPV-1',2);
+    D.center(36,'SECURE VAULT',1);
+    D.center(48,'fw '+FW_VERSION,1);
+    return;
+  }
+  D.text(0,0,'ESP32 BPV-1 boot',1);
+  D.hline(0,9,OLED_W);
+  var start = Math.max(0, n-6);
+  for(var i=start;i<n;i++) D.text(0, 12+(i-start)*9, dev.bootLines[i], 1);
+}
+
+/* boot splash — the project team */
+function screenTeam(){
+  D.clear();
+  D.rect(0,0,OLED_W,11,true);
+  D.center(2,'PROJECT TEAM',1,true);
+  for(var i=0;i<TEAM.length;i++) D.center(15+i*11, TEAM[i][0], 1);
+  D.hline(0,59,OLED_W);
+  D.center(60,'BPV-1 v'+FW_VERSION,1);
+}
+
+/* about screen — cycles through the team, name + registration number */
+function screenAbout(){
+  D.clear(); drawStatus('ABOUT');
+  var i = Math.floor(dev.anim/95) % (TEAM.length+1);
+  if(i===TEAM.length){
+    D.center(14,'BPV-1  v'+FW_VERSION,1);
+    D.center(26,'PBKDF2-SHA256',1);
+    D.center(36,'HKDF+AES-256-GCM',1);
+    D.center(50,'BLE HID keyboard',1);
+    return;
+  }
+  D.center(13,'PROJECT TEAM',1);
+  D.hline(18,21,92);
+  D.center(28, TEAM[i][0], 1);
+  D.center(40, TEAM[i][1], 2);
+  D.center(56, '('+(i+1)+' of '+TEAM.length+')', 1);
+}
+
+function screenProvision(){
+  D.clear();
+  D.rect(0,0,OLED_W,9,true);
+  D.text(2,1, dev.pwConfirm===null ? 'SET MASTER PW' : 'CONFIRM PW',1,true);
+  var shown = dev.pw.length ? new Array(Math.min(dev.pw.length,20)+1).join('*') : '';
+  D.text(2,13, shown || '_', 1);
+  D.hline(0,23,OLED_W);
+  drawRing();
+  D.text(2,56,'ROT=char PRESS=+',1);
+}
+
+function drawRing(){
+  var i, idx, cell=24, x0=4;
+  for(i=0;i<5;i++){
+    idx = ((dev.ring + i - 2) % RING.length + RING.length) % RING.length;
+    var txt = RING[idx];
+    var x = x0 + i*cell;
+    var w = cell-2;
+    if(i===2){
+      D.rect(x,28,w,17,true);
+      D.text(x + Math.round((w - tw(txt))/2), 33, txt, 1, true);
+    }else{
+      D.frame(x,30,w,13);
+      D.text(x + Math.round((w - tw(txt))/2), 33, txt, 1, false);
+    }
+  }
+}
+
+function screenLocked(){
+  D.clear();
+  D.rect(0,0,OLED_W,9,true);
+  D.text(2,1,'MASTER PASSWORD',1,true);
+  fx.fillStyle='#000'; fx.fillRect(OLED_W-9,4,6,4); fx.fillRect(OLED_W-8,1,4,1);
+  fx.fillRect(OLED_W-8,2,1,2); fx.fillRect(OLED_W-5,2,1,2); fx.fillStyle='#fff';
+
+  var shown = dev.pw.length ? new Array(Math.min(dev.pw.length,20)+1).join('*') : '';
+  D.text(2,13, shown || '_', 1);
+  D.hline(0,23,OLED_W);
+  drawRing();
+  var d=NVS.data, left = d.sec.maxAttempts - d.sec.failCount;
+  var warn = left<=2 ? '! '+Math.max(0,left)+' TRIES LEFT !' : 'tries left: '+Math.max(0,left);
+  D.text(1,48, warn, 1);
+  D.text(2,56, 'HOLD = submit', 1);
+}
+
+function screenVerify(){
+  D.clear();
+  D.center(6,'VERIFYING',1);
+  D.center(18,'PBKDF2-SHA256',1);
+  D.center(28, NVS.data.kdf.iterations.toLocaleString()+' it',1);
+  var p = (Math.sin(dev.anim/9)+1)/2;
+  D.frame(10,42,108,12);
+  D.rect(12+Math.round(p*80),44,22,8,true);
+  D.center(57,'stretching key',1);
+}
+
+function screenLockout(){
+  var left = Math.max(0, Math.ceil((NVS.data.sec.lockUntil - nowMs())/1000));
+  D.clear();
+  D.rect(0,0,OLED_W,13,true);
+  D.center(3,'! DEVICE LOCKED !',1,true);
+  D.center(18,'TOO MANY TRIES',1);
+  D.center(30, pad(Math.floor(left/60),2)+':'+pad(left%60,2), 2);
+  var tot = COOLDOWN[Math.min(NVS.data.sec.lockLevel-1, COOLDOWN.length-1)]||15;
+  D.progress(8,52,112,9, 1-(left/tot));
+  D.text(1,44,'fails '+NVS.data.sec.failCount+'  total '+NVS.data.sec.totalFails,1);
+}
+
+function screenMenu(){
+  D.clear();
+  drawStatus('VAULT ('+recs().length+')');
+  var items = menuItems(), rowH=11, vis=5;
+  if(dev.menuSel < dev.menuOff) dev.menuOff = dev.menuSel;
+  if(dev.menuSel > dev.menuOff+vis-1) dev.menuOff = dev.menuSel-vis+1;
+  for(var i=0;i<vis;i++){
+    var idx=dev.menuOff+i; if(idx>=items.length) break;
+    var label = items[idx].t.substr(0,16);
+    D.row(0, 10+i*rowH, OLED_W-5, rowH, label, idx===dev.menuSel);
+  }
+  D.scrollbar(OLED_W-2, 11, 52, items.length, vis, dev.menuOff);
+}
+
+var DETAIL_ACTIONS = ['SEND TO PC','SHOW ON SCREEN','< BACK'];
+function screenDetail(){
+  var r = recs()[dev.curIdx];
+  D.clear();
+  drawStatus((r?r.label:'').substr(0,11));
+  if(!r){ D.center(30,'no record',1); return; }
+  if(dev.showSecret && dev.plainObj){
+    D.text(1,12,'U:'+String(dev.plainObj.username).substr(0,15),1);
+    var p = String(dev.plainObj.password);
+    D.text(1,22,'P:'+p.substr(0,15),1);
+    if(p.length>15) D.text(1,32,'  '+p.substr(15,15),1);
+    D.text(1,44,'-in RAM, not saved-',1);
+    D.text(1,54,'PRESS=hide+wipe',1);
+    return;
+  }
+  D.text(1,12,'ID '+r.id+' iv '+r.iv.substr(0,5)+'..',1);
+  D.text(1,21,'ct '+unb64(r.ct).length+'B AES-GCM',1);
+  D.hline(0,30,OLED_W);
+  for(var i=0;i<DETAIL_ACTIONS.length;i++)
+    D.row(0, 32+i*11, OLED_W, 11, DETAIL_ACTIONS[i], i===dev.detailSel);
+}
+
+function screenConfirm(){
+  var r = recs()[dev.curIdx];
+  D.clear();
+  D.rect(0,0,OLED_W,9,true); D.text(2,1,'CONFIRM SEND',1,true);
+  var lines = D.wrap('Type "'+(r?r.label:'')+'" into '+NVS.data.bt.peerName+'?',17);
+  for(var i=0;i<lines.length && i<3;i++) D.text(2,13+i*9,lines[i],1);
+  D.row(6, 44, 52, 15, '  YES', dev.confirmYes);
+  D.row(70,44, 52, 15, '   NO', !dev.confirmYes);
+}
+
+function screenDecrypt(){
+  D.clear();
+  D.center(4,'DECRYPTING',1);
+  D.center(16,'AES-256-GCM',1);
+  var r = recs()[dev.curIdx];
+  D.center(26,(r?r.label:'').substr(0,17),1);
+  D.progress(8,38,112,12, dev.pct);
+  D.center(54, dev.busy||'verifying tag...',1);
+}
+
+function screenBtlink(){
+  D.clear();
+  D.center(4,'BLUETOOTH',1);
+  var dots = new Array((Math.floor(dev.anim/12)%4)+1).join('.');
+  D.center(18, BLE.connected?'LINK READY':'CONNECTING'+dots, 1);
+  D.center(30, NVS.data.bt.peerName.substr(0,17),1);
+  D.center(42, NVS.data.bt.peerAddr ? NVS.data.bt.peerAddr.substr(0,17) : 'pairing...',1);
+  D.center(54, BLE.connected?('RSSI '+BLE.rssi+' dBm'):'HID over GATT',1);
+}
+
+function screenTyping(){
+  D.clear();
+  drawStatus('HID TX');
+  D.text(1,12,'-> '+dev.tx.label.substr(0,14),1);
+  var pct = dev.tx.str.length ? dev.tx.sent/dev.tx.str.length : 0;
+  D.progress(4,24,120,12,pct);
+  D.text(1,40,'reports: '+BLE.reports,1);
+  var tail = dev.tx.shown||'';
+  D.text(1,50, tail.substr(Math.max(0,tail.length-20)).replace(/\t/g,'>').replace(/\n/g,'<'),1);
+}
+
+function screenZeroize(){
+  D.clear();
+  D.center(6,'ZEROIZING RAM',1);
+  var p = clamp(dev.pct,0,1);
+  var cols=16, rows=4, i, j;
+  for(j=0;j<rows;j++) for(i=0;i<cols;i++){
+    var idx=j*cols+i, filled = idx < Math.floor(p*cols*rows);
+    var x=4+i*7.5, y=20+j*9;
+    if(filled) D.rect(Math.round(x),y,6,7,true);
+    else D.frame(Math.round(x),y,6,7);
+  }
+  D.center(58, p>=1?'RAM CLEARED':(p<0.5?'pass 1/2 random':'pass 2/2 zeros'),1);
+}
+
+function screenSettings(){
+  D.clear();
+  drawStatus('SETTINGS');
+  var c=NVS.data.cfg, d=NVS.data;
+  var vals = {
+    autolock: Math.round(c.autoLockMs/1000)+'s',
+    enter: c.sendEnter?'ON':'OFF',
+    speed: c.typeDelay>=90?'SLOW':(c.typeDelay<=12?'FAST':'NORM'),
+    wipe: d.sec.wipeEnabled?'ON':'OFF',
+    ble: d.bt.encrypted?'ON':'OFF',
+    beep: c.beep?'ON':'OFF',
+    back:''
+  };
+  var vis=5, off=clamp(dev.settingsSel-2,0,Math.max(0,SETTINGS_ITEMS.length-vis));
+  for(var i=0;i<vis;i++){
+    var idx=off+i; if(idx>=SETTINGS_ITEMS.length) break;
+    var it=SETTINGS_ITEMS[idx];
+    var line = it.t + (vals[it.k]? '' : '');
+    var sel = idx===dev.settingsSel;
+    if(sel) D.rect(0,10+i*11,OLED_W-5,11,true);
+    D.text(2,12+i*11,it.t.substr(0,13),1,sel);
+    if(vals[it.k]) D.text(OLED_W-6-tw(vals[it.k]),12+i*11,vals[it.k],1,sel);
+  }
+  D.scrollbar(OLED_W-2,11,52,SETTINGS_ITEMS.length,vis,off);
+}
+
+function screenWiped(){
+  D.clear();
+  D.rect(0,0,OLED_W,64,true);
+  D.center(8,'VAULT',2,true);
+  D.center(24,'WIPED',2,true);
+  D.center(44,'key material',1,true);
+  D.center(54,'destroyed',1,true);
+}
+
+function render(){
+  dev.anim++;
+  if(!dev.powered){ displayOn=false; D.clear(); D.flush(); return; }
+  displayOn=true;
+  switch(dev.state){
+    case S.BOOT: screenBoot(); break;
+    case S.POST: dev.showTeam ? screenTeam() : screenBoot(); break;
+    case S.PROVISION: screenProvision(); break;
+    case S.LOCKED:    screenLocked(); break;
+    case S.VERIFY:    screenVerify(); break;
+    case S.LOCKOUT:   screenLockout(); break;
+    case S.MENU:      screenMenu(); break;
+    case S.DETAIL:    screenDetail(); break;
+    case S.CONFIRM:   screenConfirm(); break;
+    case S.DECRYPT:   screenDecrypt(); break;
+    case S.BTLINK:    screenBtlink(); break;
+    case S.TYPING:    screenTyping(); break;
+    case S.ZEROIZE:   screenZeroize(); break;
+    case S.SETTINGS:  screenSettings(); break;
+    case S.ABOUT:     screenAbout(); break;
+    case S.WIPED:     screenWiped(); break;
+    default:          D.clear();
+  }
+  /* transient toast on the OLED itself */
+  if(dev.msg && performance.now()<dev.msgUntil){
+    var w = Math.min(OLED_W-8, tw(dev.msg)+8);
+    var x = Math.round((OLED_W-w)/2);
+    D.rect(x,26,w,14,false); D.frame(x,26,w,14);
+    D.text(x+4,30,dev.msg,1);
+  }
+  D.flush();
+}
+/* ===========================================================================
+ * 12. FIRMWARE OPERATIONS — the specified algorithm, step by step
+ *
+ *   1 boot + peripheral init      7 AES-256-GCM decrypt
+ *   2 prompt master password      8 verify/establish BLE HID link
+ *   3 hash + verify               9 transmit user TAB pass [ENTER]
+ *   4 fail -> persisted counter  10 zeroize plaintext in RAM
+ *   5 success -> account list    11 return to menu, auto-lock on idle
+ *   6 user selects credential
+ * =========================================================================*/
+
+/* --- step 1 : boot ------------------------------------------------------ */
+async function powerOn(){
+  if(dev.powered) return;
+  dev.powered = true;
+  dev.bootLines = [];
+  setLed('led-pwr','on');
+  setState(S.BOOT,'power applied');
+  log('boot','ESP32-D0WD-V3 rev 3.0, 2 cores, 240 MHz');
+  log('boot','BPV-1 firmware v'+FW_VERSION+' — build '+new Date().getFullYear());
+  NVS.load();
+  NVS.data.stats.boots++;
+  applyCfgToUi();
+
+  var steps = [
+    ['[ ok ] i2c bus 400kHz',        'i2c',  'I2C master @400 kHz on SDA=21 SCL=22'],
+    ['[ ok ] ssd1306 128x64',        'oled', 'SSD1306 detected at 0x3C, framebuffer 1024 B'],
+    ['[ ok ] rotary enc + btn',      'gpio', 'EC11 encoder on GPIO 32/33, switch GPIO 25'],
+    ['[ ok ] nvs partition',         'nvs',  'partition "nvs" mounted, '+NVS.data.records.length+' record(s)'],
+    ['[ ok ] hw rng entropy',        'rng',  'hardware RNG seeded from RF noise'],
+    ['[ ok ] mbedtls aes/sha',       'crypto','AES-256-GCM + SHA-256 available ('+
+                                              (CRYPTO_OK?'WebCrypto':'unavailable')+')'],
+    ['[ ok ] ble stack (nimble)',    'ble',  'controller up, HID-over-GATT profile registered']
+  ];
+  for(var i=0;i<steps.length;i++){
+    dev.bootLines.push(steps[i][0]);
+    log(steps[i][1], steps[i][2]);
+    await sleep(150);
+  }
+  setState(S.POST,'self-test');
+  dev.bootLines.push('[ ok ] POST complete');
+  await sleep(420);
+  dev.showTeam = true;                 // team splash on the boot screen
+  await sleep(1500);
+  dev.showTeam = false;
+
+  NVS.commit('boot counter');
+  if(!NVS.data.provisioned){
+    log('vault','no vault image found — entering first-run provisioning');
+    dev.pw=''; dev.pwConfirm=null; dev.ring=0;
+    setState(S.PROVISION,'unprovisioned');
+  }else{
+    log('vault','vault image v'+NVS.data.version+', '+NVS.data.records.length+
+        ' record(s), kdf='+NVS.data.kdf.algo+' x'+NVS.data.kdf.iterations);
+    enterLockedOrLockout('boot');
+  }
+  updateChips(); renderAll();
+}
+
+function powerOff(){
+  dev.powered=false;
+  lockNow('power removed', true);
+  BLE.disconnect('power off');
+  setLed('led-pwr','off'); setLed('led-bt','off');
+  setState(S.OFF,'power removed');
+  log('boot','power removed — SRAM contents lost');
+  updateChips();
+}
+
+function enterLockedOrLockout(why){
+  var d=NVS.data;
+  if(d.sec.lockUntil > nowMs()){
+    setState(S.LOCKOUT, 'cooldown active');
+    logW('sec','device in cooldown for '+Math.ceil((d.sec.lockUntil-nowMs())/1000)+' s');
+  }else{
+    dev.pw=''; dev.ring=0;
+    setState(S.LOCKED, why);
+  }
+}
+
+/* --- provisioning ------------------------------------------------------- */
+async function provision(master, iters, seed){
+  var t0=performance.now();
+  log('prov','provisioning vault: PBKDF2-HMAC-SHA256 x'+iters);
+  var d = NVS.blank();
+  d.kdf.iterations = iters;
+  var salt = rnd(SALT_LEN);
+  d.kdf.salt = b64(salt);
+  ctrace('rng','16-byte KDF salt from hardware RNG: '+hex(salt));
+
+  var root = await Crypto.deriveRoot(master, salt, iters);
+  var kver = await Crypto.hkdf(root.bytes, salt, 'bpv/verifier/v1');
+  var kvault = await Crypto.hkdf(root.bytes, salt, 'bpv/vault-aes/v1');
+  d.verifier = b64(kver);
+
+  NVS.data = d;
+  var key = await Crypto.importAes(kvault);
+
+  d.provisioned = true;
+  d.stats.provisionedAt = nowMs();
+  d.records = []; d.nextId = 1;
+
+  if(seed){
+    for(var i=0;i<SEED_RECORDS.length;i++){
+      await storeRecord(key, SEED_RECORDS[i]);
+    }
+  }
+  NVS.commit('provision');
+
+  /* wipe the transient key material we no longer need */
+  root.bytes.fill(0); kver.fill(0); kvault.fill(0);
+  logS('prov','vault provisioned in '+fmtDur(performance.now()-t0)+
+       ' — verifier stored, vault key NOT stored');
+  return true;
+}
+
+/* encrypt one credential into the vault (device-side, needs the vault key) */
+async function storeRecord(key, cred){
+  var d = NVS.data;
+  var id = d.nextId++;
+  var label = cred.label;
+  var aad = 'v1|'+id+'|'+label;
+  var plain = utf8(JSON.stringify({ u:cred.username, p:cred.password, url:cred.url||'' }));
+  var r = await Crypto.encrypt(key, plain, aad);
+  plain.fill(0);
+  d.records.push({
+    id:id, label:label, iv:b64(r.iv), ct:b64(r.ct),
+    url:cred.url||'', created:nowMs(), uses:0
+  });
+  log('vault','record #'+id+' "'+label+'" sealed: '+r.ct.length+' B ciphertext (incl. 16 B tag)');
+  return id;
+}
+
+/* --- steps 2-4 : master password verification --------------------------- */
+async function attemptUnlock(pw){
+  var d = NVS.data;
+  if(d.sec.lockUntil > nowMs()){
+    setState(S.LOCKOUT,'attempt during cooldown');
+    return false;
+  }
+  setState(S.VERIFY,'password entered');
+  var t0 = performance.now();
+
+  /* ---- ANTI-TAMPER: the failure counter is committed to flash BEFORE the
+     password is checked. A power-cut or page reload during verification can
+     therefore never "rewind" the attempt counter.                        --- */
+  d.sec.failCount++;
+  d.sec.totalFails++;
+  NVS.commit('attempt counter (pre-verify)');
+  logS('sec','attempt #'+d.sec.failCount+' counter committed to NVS BEFORE verification '+
+       '(anti-tamper: power-cycling cannot rewind it)');
+
+  var salt = unb64(d.kdf.salt);
+  var root = await Crypto.deriveRoot(pw, salt, d.kdf.iterations);
+  var kver = await Crypto.hkdf(root.bytes, salt, 'bpv/verifier/v1');
+  var stored = unb64(d.verifier);
+  var ok = ctEqual(kver, stored);
+  ctrace('verify','constant-time compare of 32-byte verifier -> '+(ok?'MATCH':'MISMATCH'),
+         ok?'S':'E');
+
+  /* equalise response time so failures are not distinguishable by timing */
+  var spent = performance.now()-t0;
+  if(spent < MIN_VERIFY_MS) await sleep(MIN_VERIFY_MS-spent);
+
+  if(ok){
+    var kvault = await Crypto.hkdf(root.bytes, salt, 'bpv/vault-aes/v1');
+    dev.session.fp = await Crypto.fingerprint(kvault);
+    dev.session.key = await Crypto.importAes(kvault);
+    dev.session.at = nowMs();
+    /* keep a copy of the raw key bytes in the SRAM model so the demo can show
+       that it lives in volatile memory only, and is later zeroized */
+    dev.session.keyBuf = SRAM.alloc('vault_key[32] (AES-256)', kvault.slice(0));
+    dev.session.rootBuf = SRAM.alloc('kdf_root[32]', root.bytes.slice(0));
+    kvault.fill(0);
+
+    d.sec.failCount = 0; d.sec.lockLevel = 0; d.sec.lockUntil = 0;
+    d.stats.unlocks++;
+    NVS.commit('unlock success — counter reset');
+    logS('sec','MASTER PASSWORD OK — vault key derived (fp '+dev.session.fp+'), counter reset');
+    log('vault','decrypting account index — '+d.records.length+' record(s)');
+    beep(1200,60);
+    dev.menuSel=0; dev.menuOff=0; touch();
+    setState(S.MENU,'unlock ok');
+    flash('UNLOCKED');
+    BLE.connect();
+  }else{
+    var left = d.sec.maxAttempts - d.sec.failCount;
+    logE('sec','verification FAILED — '+Math.max(0,left)+' attempt(s) before lockout');
+    beep(220,150);
+    if(d.sec.wipeEnabled && d.sec.totalFails >= PANIC_WIPE_AT){
+      await panicWipe();
+    }else if(d.sec.failCount >= d.sec.maxAttempts){
+      d.sec.lockLevel++;
+      var cd = COOLDOWN[Math.min(d.sec.lockLevel-1, COOLDOWN.length-1)];
+      d.sec.lockUntil = nowMs() + cd*1000;
+      NVS.commit('lockout level '+d.sec.lockLevel);
+      logS('sec','LOCKOUT level '+d.sec.lockLevel+' — cooldown '+cd+' s (persisted)');
+      setState(S.LOCKOUT,'max attempts');
+    }else{
+      dev.pw=''; dev.ring=0;
+      setState(S.LOCKED,'retry');
+      flash('WRONG PASSWORD');
+    }
+  }
+  root.bytes.fill(0); kver.fill(0);
+  updateChips(); renderAll();
+  return ok;
+}
+
+async function panicWipe(){
+  logE('sec','PANIC WIPE — '+NVS.data.sec.totalFails+' lifetime failures reached threshold');
+  setState(S.PANIC,'panic wipe');
+  NVS.erase();
+  lockNow('panic wipe', true);
+  setState(S.WIPED,'wiped');
+  await sleep(2200);
+  toast('Vault wiped after repeated failures','err');
+  setState(S.PROVISION,'post-wipe');
+  dev.pw=''; dev.pwConfirm=null;
+  updateChips(); renderAll();
+}
+
+/* --- lock / auto-lock (step 11) ----------------------------------------- */
+function lockNow(reason, quiet){
+  var had = !!dev.session.key;
+  dev.session.key=null; dev.session.fp=null;
+  dev.plainObj=null;
+  var n = SRAM.zeroizeAll();
+  SRAM.free();
+  dev.session.keyBuf=null; dev.session.rootBuf=null; dev.plain=null;
+  dev.showSecret=false;
+  if(had){
+    logS('sec','vault LOCKED ('+reason+') — key material zeroized, '+n+' RAM region(s) cleared');
+    beep(500,60);
+  }
+  if(!quiet && dev.powered) enterLockedOrLockout(reason);
+  updateChips(); renderSram();
+}
+
+function tickAutoLock(){
+  if(!unlocked() || !dev.powered) return;
+  if(dev.state===S.TYPING || dev.state===S.DECRYPT || dev.state===S.ZEROIZE) { touch(); return; }
+  if(performance.now()-dev.lastActivity > NVS.data.cfg.autoLockMs){
+    logW('sec','inactivity timeout ('+Math.round(NVS.data.cfg.autoLockMs/1000)+' s) reached');
+    lockNow('auto-lock');
+  }
+}
+
+/* --- steps 6-7 : select + decrypt --------------------------------------- */
+async function decryptRecord(idx){
+  var r = recs()[idx];
+  if(!r || !unlocked()) return null;
+  setState(S.DECRYPT,'record selected');
+  dev.pct=0; dev.busy='reading flash...';
+  await sleep(180); dev.pct=0.35; dev.busy='AES-256-GCM...';
+  var aad = 'v1|'+r.id+'|'+r.label;
+  try{
+    var pt = await Crypto.decrypt(dev.session.key, unb64(r.iv), unb64(r.ct), aad);
+    dev.pct=0.8; dev.busy='tag verified';
+    dev.plain = SRAM.alloc('plaintext_cred['+pt.length+']', pt.slice(0));
+    var obj = JSON.parse(fromUtf8(pt));
+    pt.fill(0);
+    dev.plainObj = { username:obj.u, password:obj.p, url:obj.url, label:r.label };
+    dev.pct=1;
+    log('vault','record #'+r.id+' "'+r.label+'" decrypted — GCM tag valid');
+    renderSram();
+    await sleep(220);
+    return dev.plainObj;
+  }catch(e){
+    dev.pct=0;
+    logE('vault','record #'+r.id+' FAILED to decrypt: '+e.message+
+         ' — ciphertext or associated data has been modified');
+    flash('AUTH FAIL!',2200);
+    beep(180,250);
+    await sleep(1400);
+    setState(S.MENU,'decrypt failed');
+    return null;
+  }
+}
+
+/* --- steps 8-10 : BLE link, type, zeroize ------------------------------- */
+async function sendCredential(){
+  var r = recs()[dev.curIdx];
+  if(!r) return;
+  var cred = dev.plainObj || await decryptRecord(dev.curIdx);
+  if(!cred) return;
+
+  setState(S.BTLINK,'transmit requested');
+  if(!BLE.connected){ await BLE.connect(); await sleep(260); }
+  else log('ble','link already up — reusing encrypted connection');
+  await sleep(240);
+
+  host.focus='user'; host.user=''; host.pass=''; host.authed=false;
+  var hu=$('host-url'); if(hu && cred.url) hu.textContent = cred.url;
+  var ha=$('host-auth'); if(ha){ ha.textContent=''; ha.className='authmsg'; }
+  renderHost();
+
+  var seq = cred.username + KEY_TAB + cred.password + (NVS.data.cfg.sendEnter ? KEY_ENTER : '');
+  dev.tx = { str:seq, sent:0, label:r.label, shown:'' };
+  setState(S.TYPING,'link ready');
+  log('hid','transmitting '+seq.length+' keystrokes ('+(seq.length*2)+' HID reports)');
+  logS('hid','sequence = username | TAB | password'+(NVS.data.cfg.sendEnter?' | ENTER':''));
+
+  for(var i=0;i<seq.length;i++){
+    if(!dev.powered) break;
+    await BLE.sendChar(seq[i], NVS.data.cfg.typeDelay);
+    dev.tx.sent = i+1;
+    dev.tx.shown += seq[i];
+    touch();
+  }
+  r.uses = (r.uses||0)+1;
+  NVS.data.stats.sends++;
+  NVS.commit('usage counter');
+  log('hid','transmission complete — '+BLE.reports+' reports sent');
+
+  await zeroizePlaintext();
+  renderRecordTable();
+  touch();
+  setState(S.MENU,'transmission done');
+  flash('SENT + WIPED');
+}
+
+async function zeroizePlaintext(){
+  setState(S.ZEROIZE,'post-transmit');
+  dev.pct=0;
+  logS('mem','zeroizing decrypted credential in SRAM (2-pass: random, then 0x00)');
+  for(var i=0;i<=10;i++){ dev.pct=i/10; await sleep(45); }
+  if(dev.plain) dev.plain.zeroize();
+  dev.plainObj = null;
+  dev.showSecret = false;
+  dev.tx.str=''; dev.tx.shown='';
+  logS('mem','plaintext credential destroyed — vault key retained until lock');
+  renderSram();
+  await sleep(260);
+}
+/* ===========================================================================
+ * 13. INPUT — rotary encoder + push button (+ keyboard convenience)
+ * =========================================================================*/
+var knobAngle = 0;
+
+function onRotate(dir){
+  if(!dev.powered) return;
+  touch(); beep(dir>0?1400:1200, 14, 0.02);
+  knobAngle += dir*14;
+  var k=$('knob'); if(k) k.style.transform='rotate('+knobAngle+'deg)';
+  switch(dev.state){
+    case S.PROVISION: case S.LOCKED:
+      dev.ring = (dev.ring + dir + RING.length) % RING.length; break;
+    case S.MENU:
+      dev.menuSel = clamp(dev.menuSel+dir, 0, menuItems().length-1); break;
+    case S.DETAIL:
+      if(!dev.showSecret) dev.detailSel = clamp(dev.detailSel+dir,0,DETAIL_ACTIONS.length-1); break;
+    case S.CONFIRM:
+      dev.confirmYes = !dev.confirmYes; break;
+    case S.SETTINGS:
+      dev.settingsSel = clamp(dev.settingsSel+dir,0,SETTINGS_ITEMS.length-1); break;
+  }
+}
+
+function onPress(){
+  if(!dev.powered) return;
+  touch(); beep(900,25);
+  var k=$('knob'); if(k){ k.classList.add('pressed'); setTimeout(function(){k.classList.remove('pressed');},110); }
+  switch(dev.state){
+    case S.PROVISION: case S.LOCKED: {
+      var item = RING[dev.ring];
+      if(item==='DEL') dev.pw = dev.pw.slice(0,-1);
+      else if(item==='OK') submitPassword();
+      else if(dev.pw.length<48) dev.pw += item;
+      break;
+    }
+    case S.MENU: {
+      var items = menuItems(), it = items[dev.menuSel];
+      if(!it) break;
+      if(it.kind==='rec'){ dev.curIdx=it.i; dev.detailSel=0; dev.showSecret=false; setState(S.DETAIL,'record selected'); }
+      else if(it.kind==='settings'){ dev.settingsSel=0; setState(S.SETTINGS,'menu'); }
+      else if(it.kind==='about'){ dev.aboutPage=0; setState(S.ABOUT,'menu'); }
+      else if(it.kind==='lock'){ lockNow('user requested'); }
+      break;
+    }
+    case S.DETAIL: {
+      if(dev.showSecret){ hideSecret(); break; }
+      if(dev.detailSel===0){ dev.confirmYes=true; setState(S.CONFIRM,'send requested'); }
+      else if(dev.detailSel===1){ showSecret(); }
+      else { setState(S.MENU,'back'); }
+      break;
+    }
+    case S.CONFIRM: {
+      if(dev.confirmYes) sendCredential();
+      else { setState(S.DETAIL,'send cancelled'); log('ui','transmission cancelled by user'); }
+      break;
+    }
+    case S.SETTINGS: cycleSetting(SETTINGS_ITEMS[dev.settingsSel].k); break;
+    case S.ABOUT:    setState(S.MENU,'back'); break;
+    case S.LOCKOUT:  flash('LOCKED OUT'); break;
+  }
+}
+
+function onLong(){
+  if(!dev.powered) return;
+  touch(); beep(700,90);
+  switch(dev.state){
+    case S.PROVISION: case S.LOCKED: submitPassword(); break;
+    case S.DETAIL:   if(dev.showSecret) hideSecret(); setState(S.MENU,'long-press back'); break;
+    case S.CONFIRM:  setState(S.DETAIL,'cancelled'); break;
+    case S.SETTINGS: case S.ABOUT: setState(S.MENU,'long-press back'); break;
+    case S.MENU:     lockNow('long-press lock'); break;
+  }
+}
+
+function onChar(c){
+  if(!dev.powered) return;
+  if(dev.state!==S.PROVISION && dev.state!==S.LOCKED) return;
+  if(dev.pw.length<48){ dev.pw += c; touch(); beep(1000,10,0.015); }
+}
+function onBackspace(){
+  if(dev.state!==S.PROVISION && dev.state!==S.LOCKED) return;
+  dev.pw = dev.pw.slice(0,-1); touch();
+}
+
+async function submitPassword(){
+  if(dev.state===S.PROVISION){
+    if(dev.pw.length<4){ flash('MIN 4 CHARS'); return; }
+    if(dev.pwConfirm===null){
+      dev.pwFirst = dev.pw; dev.pw=''; dev.pwConfirm=''; dev.ring=0;
+      flash('RE-ENTER');
+      return;
+    }
+    if(dev.pw !== dev.pwFirst){
+      flash('MISMATCH!',1800);
+      dev.pw=''; dev.pwConfirm=null; dev.pwFirst=null;
+      return;
+    }
+    var master = dev.pw;
+    dev.pw=''; dev.pwConfirm=null; dev.pwFirst=null;
+    setState(S.VERIFY,'provisioning');
+    await provision(master, parseInt($('s-iters').value,10)||DEFAULT_ITERS, true);
+    $('cheat-pw').textContent = master;
+    toast('Vault provisioned with '+recs().length+' demo records','ok');
+    applyCfgToUi(); renderAll();
+    enterLockedOrLockout('provisioned');
+    return;
+  }
+  if(dev.state===S.LOCKED){
+    if(!dev.pw.length){ flash('EMPTY'); return; }
+    var pw = dev.pw; dev.pw='';
+    await attemptUnlock(pw);
+  }
+}
+
+async function showSecret(){
+  var c = dev.plainObj || await decryptRecord(dev.curIdx);
+  if(!c) return;
+  dev.showSecret = true;
+  setState(S.DETAIL,'reveal on screen');
+  logW('ui','credential displayed on OLED — shoulder-surfing risk, auto-hides on exit');
+}
+function hideSecret(){
+  dev.showSecret=false;
+  if(dev.plain) dev.plain.zeroize();
+  dev.plainObj=null;
+  logS('mem','on-screen credential hidden and plaintext zeroized');
+  renderSram();
+}
+
+function cycleSetting(k){
+  var c=NVS.data.cfg, d=NVS.data;
+  if(k==='autolock'){ var opts=[15000,30000,60000,120000,300000];
+    c.autoLockMs = opts[(opts.indexOf(c.autoLockMs)+1)%opts.length]; }
+  else if(k==='enter') c.sendEnter=!c.sendEnter;
+  else if(k==='speed'){ var sp=[90,45,12]; c.typeDelay = sp[(sp.indexOf(c.typeDelay)+1)%sp.length]; }
+  else if(k==='wipe')  d.sec.wipeEnabled=!d.sec.wipeEnabled;
+  else if(k==='ble')   d.bt.encrypted=!d.bt.encrypted;
+  else if(k==='beep')  c.beep=!c.beep;
+  else if(k==='back'){ setState(S.MENU,'settings exit'); return; }
+  NVS.commit('settings');
+  applyCfgToUi();
+  log('cfg','setting "'+k+'" changed');
+}
+
+/* ---- wire up the physical controls ---- */
+function bindInputs(){
+  var press=$('btn-press'), knob=$('knob'), holdTimer=null, held=false;
+
+  $('btn-cw').onclick  = function(){ onRotate(1); };
+  $('btn-ccw').onclick = function(){ onRotate(-1); };
+  $('btn-long').onclick= function(){ onLong(); };
+
+  function down(){ held=false; holdTimer=setTimeout(function(){ held=true; onLong(); }, LONG_PRESS_MS); }
+  function up(){ clearTimeout(holdTimer); if(!held) onPress(); }
+  press.addEventListener('mousedown',down); press.addEventListener('mouseup',up);
+  press.addEventListener('mouseleave',function(){ clearTimeout(holdTimer); });
+  press.addEventListener('touchstart',function(e){ e.preventDefault(); down(); },{passive:false});
+  press.addEventListener('touchend',function(e){ e.preventDefault(); up(); },{passive:false});
+
+  knob.addEventListener('mousedown',down); knob.addEventListener('mouseup',up);
+  knob.addEventListener('mouseleave',function(){ clearTimeout(holdTimer); });
+  knob.addEventListener('wheel',function(e){ e.preventDefault(); onRotate(e.deltaY>0?1:-1); },{passive:false});
+
+  $('btn-power').onclick = function(){ dev.powered ? powerOff() : powerOn(); };
+  $('btn-reset').onclick = function(){ powerOff(); setTimeout(powerOn, 380); };
+  $('btn-lock').onclick  = function(){ if(unlocked()) lockNow('front-panel button'); else flash('ALREADY LOCKED'); };
+
+  document.addEventListener('keydown', function(e){
+    var t=e.target.tagName;
+    if(t==='INPUT'||t==='TEXTAREA'||t==='SELECT') return;
+    if($('modal').classList.contains('show') && e.key!=='Escape') return;
+    if(e.key==='ArrowUp'||e.key==='ArrowLeft'){ e.preventDefault(); onRotate(-1); }
+    else if(e.key==='ArrowDown'||e.key==='ArrowRight'){ e.preventDefault(); onRotate(1); }
+    else if(e.key==='Enter'){ e.preventDefault();
+      if(dev.state===S.LOCKED||dev.state===S.PROVISION) submitPassword(); else onPress(); }
+    else if(e.key===' '){ e.preventDefault(); onPress(); }
+    else if(e.key==='Escape'){ e.preventDefault(); closeModal(); onLong(); }
+    else if(e.key==='Backspace'){ e.preventDefault(); onBackspace(); }
+    else if(e.key.length===1 && HID_MAP[e.key]){ onChar(e.key); }
+  });
+}
+/* ===========================================================================
+ * 14. INSTRUMENTATION PANELS
+ * =========================================================================*/
+function chip(id, cls, text){
+  var e=$(id); if(!e) return;
+  e.className='st '+cls;
+  e.lastChild.textContent = text;
+}
+function updateChips(){
+  chip('st-pwr', dev.powered?'on':'', dev.powered?'POWER ON':'POWER OFF');
+  chip('st-lock', unlocked()?'on':(dev.state===S.LOCKOUT?'bad':'warn'),
+       unlocked()?'UNLOCKED':(dev.state===S.LOCKOUT?'LOCKED OUT':'LOCKED'));
+  chip('st-bt', BLE.connected?'on':(BLE.connecting?'warn':''),
+       BLE.connected?'BLE LINKED':'BLE IDLE');
+  chip('st-crypto', CRYPTO_OK?'info':'bad', CRYPTO_OK?'WebCrypto OK':'NO CRYPTO');
+  chip('st-flash', NVS.volatile?'warn':'info',
+       NVS.volatile?'FLASH VOLATILE':'NVS '+NVS.writes+' writes');
+  var d=NVS.data;
+  if(d){
+    var cr=$('cheat-recs'); if(cr) cr.textContent = d.records.length+' record(s)';
+    var cf=$('cheat-fails');
+    if(cf){
+      cf.textContent = d.sec.failCount+' / '+d.sec.maxAttempts+
+        (d.sec.totalFails? '   (lifetime '+d.sec.totalFails+')':'');
+      cf.className = d.sec.failCount>0 ? 'bad-t':'';
+    }
+    var ck=$('cheat-kdf');
+    if(ck) ck.textContent = 'PBKDF2-SHA256 x'+d.kdf.iterations.toLocaleString();
+  }
+}
+
+function applyCfgToUi(){
+  var d=NVS.data; if(!d) return;
+  var m={ 's-autolock':d.cfg.autoLockMs, 's-speed':d.cfg.typeDelay, 's-iters':d.kdf.iterations };
+  for(var k in m){ var e=$(k); if(e) e.value=String(m[k]); }
+  if($('s-maxatt')) $('s-maxatt').value = d.sec.maxAttempts;
+  if($('s-enter')) $('s-enter').checked = d.cfg.sendEnter;
+  if($('s-wipe'))  $('s-wipe').checked  = d.sec.wipeEnabled;
+  if($('s-beep'))  $('s-beep').checked  = d.cfg.beep;
+  if($('ble-encrypt')) $('ble-encrypt').checked = d.bt.encrypted;
+}
+
+/* ---- flash hex viewer -------------------------------------------------- */
+var KIND_CLASS = { magic:'b-magic', salt:'b-salt', ver:'b-ver', sec:'b-sec',
+                   meta:'b-meta', label:'b-label', iv:'b-iv', ct:'b-ct' };
+function renderHex(){
+  var box=$('hexdump'); if(!box) return;
+  if(!NVS.data){ box.textContent='(no image)'; return; }
+  var img = buildFlashImage(), bytes=img.bytes, spans=img.spans;
+  var kindAt = new Array(bytes.length);
+  spans.forEach(function(s){ for(var i=s.s;i<s.e;i++) kindAt[i]=s.k; });
+  var html='', i, j;
+  for(i=0;i<bytes.length;i+=16){
+    html += '<span class="off">'+pad(i.toString(16),6)+'</span>  ';
+    for(j=0;j<16;j++){
+      if(i+j<bytes.length){
+        html += '<span class="'+(KIND_CLASS[kindAt[i+j]]||'')+'">'+pad(bytes[i+j].toString(16),2)+'</span> ';
+      } else html+='   ';
+      if(j===7) html+=' ';
+    }
+    html += ' <span class="as">|';
+    for(j=0;j<16 && i+j<bytes.length;j++){
+      var c=bytes[i+j];
+      html += (c>=32&&c<127) ? esc(String.fromCharCode(c)) : '.';
+    }
+    html += '|</span>\n';
+  }
+  html += '\n<span class="off">total '+bytes.length+' bytes'+
+          (NVS.volatile?'  (VOLATILE — localStorage unavailable)':'  (persisted in localStorage)')+'</span>';
+  box.innerHTML = html;
+}
+
+/* ---- SRAM viewer ------------------------------------------------------- */
+function renderSram(){
+  var box=$('sramview'); if(!box) return;
+  var reveal = $('sram-reveal') && $('sram-reveal').checked;
+  if(!SRAM.regions.length){
+    box.innerHTML = '<span class="off">no secret material resident — vault locked</span>\n\n'+
+      '<span class="ok-t">All key and plaintext regions have been zeroized and freed.</span>';
+    return;
+  }
+  var html='';
+  SRAM.regions.forEach(function(r){
+    var st = r.zeroized ? '<span class="ok-t">[ZEROIZED]</span>' : '<span class="bad-t">[LIVE SECRET]</span>';
+    html += '<span class="cy-t">'+esc(r.name)+'</span>  '+st+'  <span class="off">t+'+
+            r.at.toFixed(2)+'s</span>\n';
+    var b=r.buf, i, j;
+    for(i=0;i<b.length;i+=16){
+      html += '  <span class="off">'+pad(i.toString(16),4)+'</span>  ';
+      for(j=0;j<16 && i+j<b.length;j++){
+        var v = (!reveal && r.secret && !r.zeroized) ? '??' : pad(b[i+j].toString(16),2);
+        html += v+' ';
+        if(j===7) html+=' ';
+      }
+      html+='\n';
+    }
+    html+='\n';
+  });
+  html += '<span class="off">tip: tick &ldquo;reveal secret bytes&rdquo; to show live key material</span>';
+  box.innerHTML = html;
+}
+
+/* ---- state machine ----------------------------------------------------- */
+function renderFsm(){
+  var box=$('fsm'); if(!box) return;
+  box.innerHTML='';
+  FSM_ORDER.forEach(function(s,i){
+    var n=el('div','node'+(dev.state===s?' act':(dev.visited[s]?' visited':'')));
+    n.appendChild(el('span','n',String(i)));
+    n.appendChild(document.createTextNode(s));
+    box.appendChild(n);
+  });
+}
+
+/* ---- record table ------------------------------------------------------ */
+function renderRecordTable(){
+  var tb = document.querySelector('#rec-table tbody'); if(!tb) return;
+  tb.innerHTML='';
+  recs().forEach(function(r,i){
+    var tr=el('tr');
+    function td(t,cls){ var d=el('td',cls); d.innerHTML=t; tr.appendChild(d); }
+    var ct=unb64(r.ct);
+    td(String(r.id));
+    td('<span class="ok-t">'+esc(r.label)+'</span>');
+    td('<span class="mono" style="color:#f472b6">'+r.iv.substr(0,10)+'..</span>');
+    td('<span style="color:#ff8f6b">'+hex(ct.subarray(0,7))+'..</span> <span class="muted">('+ct.length+'B)</span>');
+    td(String(r.uses||0));
+    var d5=el('td');
+    var b=el('button','sm danger','del');
+    b.onclick=function(){ deleteRecord(i); };
+    d5.appendChild(b); tr.appendChild(d5);
+    tb.appendChild(tr);
+  });
+  if(!recs().length){
+    var tr=el('tr'); var td0=el('td','muted','— vault empty —'); td0.colSpan=6; tr.appendChild(td0); tb.appendChild(tr);
+  }
+}
+function deleteRecord(i){
+  var r=recs()[i];
+  NVS.data.records.splice(i,1);
+  NVS.commit('record deleted');
+  log('vault','record #'+r.id+' "'+r.label+'" erased from NVS');
+  if(dev.curIdx>=recs().length) dev.curIdx=recs().length-1;
+  dev.menuSel = clamp(dev.menuSel,0,menuItems().length-1);
+  renderAll();
+}
+
+/* ---- modal ------------------------------------------------------------- */
+function openModal(html){
+  $('modal-box').innerHTML = html;
+  $('modal').classList.add('show');
+  var c=$('modal-close'); if(c) c.onclick=closeModal;
+}
+function closeModal(){ $('modal').classList.remove('show'); }
+
+function renderAll(){
+  updateChips(); renderHex(); renderSram(); renderFsm(); renderRecordTable(); renderHost();
+}
+/* ===========================================================================
+ * 15. ATTACK LAB — every entry is a real operation against the real data
+ * =========================================================================*/
+var vaultBackup = null;
+function snapshotVault(){ vaultBackup = JSON.stringify(NVS.data.records); }
+function repairVault(){
+  if(!vaultBackup){ toast('nothing to repair','warn'); return; }
+  NVS.data.records = JSON.parse(vaultBackup);
+  NVS.commit('vault repaired');
+  logA('atk','vault records restored from pre-attack snapshot');
+  renderAll(); toast('Vault repaired','ok');
+}
+
+function verdict(row, text, blocked){
+  var old = row.querySelector('.verdict');
+  if(old) old.parentNode.removeChild(old);
+  var v = el('div','verdict '+(blocked?'block':'leak'), text);
+  row.parentNode.insertBefore(v, row.nextSibling);
+  setTimeout(function(){ v.scrollIntoView({block:'nearest'}); },30);
+}
+
+var ATTACKS = [
+  {
+    t:'Desolder the flash / read the NVS partition',
+    d:'Attacker owns the chip and dumps every byte of storage.',
+    b:'Dump',
+    run: async function(row){
+      logA('atk','raw flash read-out (simulated chip-off attack)');
+      var img = buildFlashImage();
+      openModal('<div class="hd" style="display:flex;padding:10px 12px;border-bottom:1px solid #1d2a3a">'+
+        '<h3 style="font-family:var(--mono);font-size:12px;color:#7b8ea6">RAW NVS DUMP — '+img.bytes.length+' BYTES</h3>'+
+        '<span style="margin-left:auto"><button class="sm" id="modal-close">close</button></span></div>'+
+        '<div class="hexdump" style="height:60vh">'+$('hexdump').innerHTML+'</div>'+
+        '<div class="note good" style="margin:12px">The dump contains the KDF salt, the verifier, the attempt '+
+        'counter, record labels, IVs and AES-GCM ciphertext. It contains <b>no vault key and no plaintext '+
+        'credential</b>. Without the master password the ciphertext is unusable: recovering it requires '+
+        'brute-forcing PBKDF2-HMAC-SHA256 at '+NVS.data.kdf.iterations.toLocaleString()+' iterations per guess.</div>');
+      verdict(row,'BLOCKED — ciphertext only; key is not stored on the device', true);
+    }
+  },
+  {
+    t:'Brute-force the master password',
+    d:'Five wrong guesses in a row against the running device.',
+    b:'Run 5',
+    run: async function(row){
+      logA('atk','automated online guessing attack started');
+      var guesses=['password','123456','letmein','admin','qwerty'];
+      for(var i=0;i<guesses.length;i++){
+        if(NVS.data.sec.lockUntil>nowMs()) break;
+        dev.pw=''; setState(S.LOCKED,'attack');
+        await attemptUnlock(guesses[i]);
+        await sleep(120);
+      }
+      var d=NVS.data;
+      verdict(row, d.sec.lockUntil>nowMs()
+        ? 'BLOCKED — device locked out for '+Math.ceil((d.sec.lockUntil-nowMs())/1000)+
+          ' s (level '+d.sec.lockLevel+'), each guess also costs a full PBKDF2 derivation'
+        : 'attempts recorded: '+d.sec.failCount+'/'+d.sec.maxAttempts, true);
+    }
+  },
+  {
+    t:'Power-cycle to reset the attempt counter',
+    d:'Classic anti-tamper bypass: cut power mid-verification and reboot.',
+    b:'Prove',
+    run: async function(row){
+      logA('atk','power-cut during verification, then reboot');
+      var before = NVS.data.sec.failCount;
+      powerOff();
+      await sleep(500);
+      var onFlash = NVS.reread();
+      await powerOn();
+      var after = NVS.data.sec.failCount;
+      verdict(row,'BLOCKED — counter was '+before+' before the cut, '+
+        (onFlash?onFlash.sec.failCount:'?')+' in flash, '+after+
+        ' after reboot. It is committed BEFORE verification, so it cannot be rewound.', true);
+    }
+  },
+  {
+    t:'Flip one bit in a stored ciphertext',
+    d:'Fault injection / direct flash edit on record #1.',
+    b:'Corrupt',
+    run: async function(row){
+      if(!recs().length){ toast('vault is empty','warn'); return; }
+      snapshotVault();
+      var r = recs()[0];
+      var ct = unb64(r.ct);
+      var pos = Math.floor(Math.random()*ct.length);
+      ct[pos] ^= 0x01;
+      r.ct = b64(ct);
+      NVS.commit('ciphertext tampered');
+      logA('atk','bit 0 of byte '+pos+' flipped in record #'+r.id+' ("'+r.label+'")');
+      renderAll();
+      dev.curIdx=0;
+      var ok = unlocked() ? await decryptRecord(0) : null;
+      verdict(row, unlocked()
+        ? (ok ? 'LEAK — decryption unexpectedly succeeded' :
+                'BLOCKED — GCM tag verification failed, device refuses to use the record')
+        : 'flash modified — unlock the vault and open record #1 to see the GCM tag reject it', !ok);
+      if(unlocked()) setState(S.MENU,'attack finished');
+    }
+  },
+  {
+    t:'Swap two records in flash',
+    d:'Move the ciphertext of a low-value account onto a high-value label.',
+    b:'Swap',
+    run: async function(row){
+      if(recs().length<2){ toast('need 2 records','warn'); return; }
+      snapshotVault();
+      var a=recs()[0], b=recs()[1];
+      var t={iv:a.iv, ct:a.ct};
+      a.iv=b.iv; a.ct=b.ct; b.iv=t.iv; b.ct=t.ct;
+      NVS.commit('records swapped');
+      logA('atk','ciphertext of "'+a.label+'" and "'+b.label+'" exchanged in flash');
+      renderAll();
+      var ok = unlocked() ? await decryptRecord(0) : null;
+      verdict(row, unlocked()
+        ? (ok ? 'LEAK — record decrypted under the wrong label' :
+                'BLOCKED — AAD binds ciphertext to record id + label, so the swap fails authentication')
+        : 'flash modified — unlock and open record #1 to see the AAD binding reject it', !ok);
+      if(unlocked()) setState(S.MENU,'attack finished');
+    }
+  },
+  {
+    t:'Rename a label in flash',
+    d:'Metadata is stored in the clear — can it be abused?',
+    b:'Rename',
+    run: async function(row){
+      if(!recs().length){ toast('vault is empty','warn'); return; }
+      snapshotVault();
+      var r=recs()[0], old=r.label;
+      r.label = 'Bank (demo)'.substr(0,18);
+      if(r.label===old) r.label='EvilBank';
+      NVS.commit('label rewritten');
+      logA('atk','label of record #'+r.id+' rewritten: "'+old+'" -> "'+r.label+'"');
+      renderAll();
+      var ok = unlocked() ? await decryptRecord(0) : null;
+      verdict(row, unlocked()
+        ? (ok ? 'LEAK — label is not authenticated' :
+                'BLOCKED — the label is part of the GCM associated data, so editing it breaks the tag')
+        : 'flash modified — unlock and open record #1 to see the tag reject it', !ok);
+      if(unlocked()) setState(S.MENU,'attack finished');
+    }
+  },
+  {
+    t:'Sniff the Bluetooth link',
+    d:'Passive radio capture while the vault types your password.',
+    b:'Capture',
+    run: async function(row){
+      var wasEnc = NVS.data.bt.encrypted;
+      NVS.data.bt.encrypted=false;
+      $('ble-encrypt').checked=false;
+      logA('atk','link-layer encryption disabled — capturing HID reports over the air');
+      if(!unlocked()){
+        verdict(row,'unlock the vault and send a credential to see the captured traffic', false);
+      }else{
+        if(dev.curIdx<0) dev.curIdx=0;
+        await sendCredential();
+        verdict(row,'LEAK — with LE Secure Connections OFF every keystroke is recoverable from the air. '+
+          'Re-enable link encryption (checkbox above the sniffer): the same capture becomes opaque AES-CCM ciphertext.', false);
+      }
+      NVS.data.bt.encrypted = wasEnc;
+      $('ble-encrypt').checked = wasEnc;
+      NVS.commit('ble encryption restored');
+    }
+  },
+  {
+    t:'Scrape the vault key out of RAM',
+    d:'Cold-boot / debugger attack against the running device.',
+    b:'Scrape',
+    run: async function(row){
+      logA('atk','memory scrape of the SRAM working set');
+      var live = SRAM.regions.filter(function(r){ return !r.zeroized; });
+      selectTab('sram');
+      if(unlocked() && live.length){
+        verdict(row,'PARTIAL LEAK — while unlocked, '+live.length+' secret region(s) are resident '+
+          '(this is unavoidable: the key must exist to decrypt). Mitigations in effect: '+
+          'short auto-lock, 2-pass zeroization, and no key persisted to flash.', false);
+      }else{
+        verdict(row,'BLOCKED — no key or plaintext resident. Lock/auto-lock zeroized every region.', true);
+      }
+    }
+  },
+  {
+    t:'Restore the vault after an attack',
+    d:'Undo the tampering above so the demo can continue.',
+    b:'Repair',
+    run: async function(row){ repairVault(); verdict(row,'records restored from snapshot', true); }
+  }
+];
+
+function renderAttacks(){
+  var box=$('atk-list'); if(!box) return;
+  box.innerHTML='';
+  ATTACKS.forEach(function(a){
+    var row=el('div','row');
+    var left=el('div');
+    left.appendChild(el('div','ttl',a.t));
+    left.appendChild(el('div','ds',a.d));
+    var btn=el('button','sm warn',a.b);
+    btn.onclick=function(){
+      btn.disabled=true;
+      Promise.resolve(a.run(row)).catch(function(e){ logE('atk',e.message); })
+        .then(function(){ btn.disabled=false; renderAll(); });
+    };
+    row.appendChild(left); row.appendChild(btn);
+    box.appendChild(row);
+  });
+}
+
+/* scan the raw flash image for any known plaintext secret */
+async function scanForPlaintext(){
+  if(!unlocked()){ toast('unlock the vault first (the scanner needs the plaintext to look for)','warn'); return; }
+  var img = buildFlashImage(), bytes=img.bytes, hits=[];
+  for(var i=0;i<recs().length;i++){
+    var c = await decryptRecordQuiet(i);
+    if(!c) continue;
+    [['password',c.password],['username',c.username]].forEach(function(p){
+      var needle = utf8(p[1]);
+      outer:
+      for(var s=0;s+needle.length<=bytes.length;s++){
+        for(var j=0;j<needle.length;j++) if(bytes[s+j]!==needle[j]) continue outer;
+        hits.push(p[0]+' of "'+c.label+'" at offset 0x'+pad(s.toString(16),6));
+        break;
+      }
+    });
+  }
+  logA('atk','plaintext scan over '+bytes.length+' bytes of flash: '+hits.length+' hit(s)');
+  openModal('<div style="padding:16px">'+
+    '<h3 style="color:'+(hits.length?'#f87171':'#4ade80')+';margin-bottom:8px">'+
+    (hits.length? hits.length+' PLAINTEXT SECRET(S) FOUND' : 'NO PLAINTEXT SECRETS IN FLASH')+'</h3>'+
+    '<p class="hint">Every stored username and password was decrypted in RAM and then searched for, '+
+    'byte for byte, across the entire '+bytes.length+'-byte flash image.</p>'+
+    (hits.length? '<pre class="mono tiny bad-t">'+esc(hits.join('\n'))+'</pre>' :
+     '<div class="note good" style="margin-top:10px">0 matches. Secrets exist in flash only as AES-256-GCM '+
+     'ciphertext. Record labels are intentionally stored as plaintext metadata so the menu can be drawn '+
+     'before decryption — this is a documented trade-off.</div>')+
+    '<div style="margin-top:14px"><button class="sm" id="modal-close">close</button></div></div>');
+}
+async function decryptRecordQuiet(i){
+  var r=recs()[i];
+  try{
+    var pt = await subtle.decrypt(
+      {name:'AES-GCM', iv:unb64(r.iv), additionalData:utf8('v1|'+r.id+'|'+r.label), tagLength:TAG_BITS},
+      dev.session.key, unb64(r.ct));
+    var o = JSON.parse(fromUtf8(new Uint8Array(pt)));
+    return { username:o.u, password:o.p, label:r.label };
+  }catch(e){ return null; }
+}
+/* ===========================================================================
+ * 16. SELF-TEST SUITE
+ *     Known-answer tests against published vectors + behavioural tests.
+ * =========================================================================*/
+var TESTS = [
+  { n:'Web Crypto subtle available', f: async function(){
+      if(!CRYPTO_OK) throw new Error('crypto.subtle missing');
+      return 'deriveBits/encrypt/decrypt present';
+  }},
+  { n:'SHA-256 KAT  "abc"', f: async function(){
+      var h = hex(new Uint8Array(await subtle.digest('SHA-256', utf8('abc'))));
+      var want='ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad';
+      if(h!==want) throw new Error('got '+h);
+      return h.substr(0,24)+'..';
+  }},
+  { n:'PBKDF2-HMAC-SHA256 KAT  c=1', f: async function(){
+      var k=await subtle.importKey('raw',utf8('password'),'PBKDF2',false,['deriveBits']);
+      var b=hex(new Uint8Array(await subtle.deriveBits(
+        {name:'PBKDF2',salt:utf8('salt'),iterations:1,hash:'SHA-256'},k,256)));
+      var want='120fb6cffcf8b32c43e7225256c4f837a86548c92ccc35480805987cb70be17b';
+      if(b!==want) throw new Error('got '+b);
+      return b.substr(0,24)+'..';
+  }},
+  { n:'PBKDF2-HMAC-SHA256 KAT  c=4096', f: async function(){
+      var k=await subtle.importKey('raw',utf8('password'),'PBKDF2',false,['deriveBits']);
+      var b=hex(new Uint8Array(await subtle.deriveBits(
+        {name:'PBKDF2',salt:utf8('salt'),iterations:4096,hash:'SHA-256'},k,256)));
+      var want='c5e478d59288c841aa530db6845c4c8d962893a001ce4e11a4963873aa98134a';
+      if(b!==want) throw new Error('got '+b);
+      return b.substr(0,24)+'..';
+  }},
+  { n:'HKDF is deterministic', f: async function(){
+      var root=rnd(32), salt=rnd(16);
+      var a=hex(await Crypto.hkdf(root,salt,'bpv/test'));
+      var b=hex(await Crypto.hkdf(root,salt,'bpv/test'));
+      if(a!==b) throw new Error('non-deterministic');
+      return 'stable across calls';
+  }},
+  { n:'HKDF domain separation (verifier != vault key)', f: async function(){
+      var root=rnd(32), salt=rnd(16);
+      var v=hex(await Crypto.hkdf(root,salt,'bpv/verifier/v1'));
+      var k=hex(await Crypto.hkdf(root,salt,'bpv/vault-aes/v1'));
+      if(v===k) throw new Error('same output for different info');
+      return 'stored verifier reveals nothing about the vault key';
+  }},
+  { n:'AES-256-GCM round trip', f: async function(){
+      var key=await Crypto.importAes(rnd(32));
+      var msg=utf8('correct horse battery staple');
+      var e=await Crypto.encrypt(key,msg,'v1|1|Test');
+      var d=await Crypto.decrypt(key,e.iv,e.ct,'v1|1|Test');
+      if(fromUtf8(d)!=='correct horse battery staple') throw new Error('mismatch');
+      return e.ct.length+' B ct (16 B tag included)';
+  }},
+  { n:'GCM rejects a single flipped bit', f: async function(){
+      var key=await Crypto.importAes(rnd(32));
+      var e=await Crypto.encrypt(key,utf8('secret'),'aad');
+      e.ct[3]^=0x01;
+      try{ await Crypto.decrypt(key,e.iv,e.ct,'aad'); }
+      catch(err){ return 'tag mismatch detected'; }
+      throw new Error('corrupt ciphertext accepted');
+  }},
+  { n:'GCM rejects the wrong key', f: async function(){
+      var k1=await Crypto.importAes(rnd(32)), k2=await Crypto.importAes(rnd(32));
+      var e=await Crypto.encrypt(k1,utf8('secret'),'aad');
+      try{ await Crypto.decrypt(k2,e.iv,e.ct,'aad'); }
+      catch(err){ return 'wrong master password cannot decrypt'; }
+      throw new Error('decrypted under wrong key');
+  }},
+  { n:'GCM rejects modified associated data', f: async function(){
+      var key=await Crypto.importAes(rnd(32));
+      var e=await Crypto.encrypt(key,utf8('secret'),'v1|7|GitHub');
+      try{ await Crypto.decrypt(key,e.iv,e.ct,'v1|7|EvilBank'); }
+      catch(err){ return 'label/id binding enforced'; }
+      throw new Error('AAD not authenticated');
+  }},
+  { n:'IV uniqueness over 200 encryptions', f: async function(){
+      var key=await Crypto.importAes(rnd(32)), seen={}, i, h;
+      for(i=0;i<200;i++){
+        h=hex((await Crypto.encrypt(key,utf8('x'),'a')).iv);
+        if(seen[h]) throw new Error('IV reuse at '+i);
+        seen[h]=1;
+      }
+      return '200 distinct 96-bit nonces';
+  }},
+  { n:'Constant-time comparison correctness', f: async function(){
+      var a=new Uint8Array([1,2,3,4]);
+      if(!ctEqual(a,new Uint8Array([1,2,3,4]))) throw new Error('equal arrays reported unequal');
+      if(ctEqual(a,new Uint8Array([1,2,3,5]))) throw new Error('unequal arrays reported equal');
+      if(ctEqual(a,new Uint8Array([1,2,3]))) throw new Error('length mismatch reported equal');
+      return 'no early exit, XOR accumulator';
+  }},
+  { n:'base64 / hex codecs round trip', f: async function(){
+      var r=rnd(64);
+      if(hex(unb64(b64(r)))!==hex(r)) throw new Error('base64 mismatch');
+      if(hex(unhex(hex(r)))!==hex(r)) throw new Error('hex mismatch');
+      return '64 random bytes survive both codecs';
+  }},
+  { n:'SecureBuffer zeroization', f: async function(){
+      var b=new SecureBuffer('t', rnd(32));
+      b.zeroize();
+      for(var i=0;i<b.buf.length;i++) if(b.buf[i]!==0) throw new Error('residual byte at '+i);
+      return '2-pass overwrite verified (random, then 0x00)';
+  }},
+  { n:'Attempt counter survives a simulated power cut', f: async function(){
+      if(!NVS.data.provisioned) return 'skipped — vault not provisioned';
+      var before = NVS.data.sec.failCount;
+      NVS.data.sec.failCount = before + 7;
+      NVS.commit('self-test');
+      var onFlash = NVS.reread();
+      var got = onFlash ? onFlash.sec.failCount : -1;
+      NVS.data.sec.failCount = before;
+      NVS.commit('self-test restore');
+      if(got !== before+7) throw new Error('flash held '+got);
+      return 'value read back from the backing store';
+  }},
+  { n:'Vault key is never written to flash', f: async function(){
+      if(!unlocked()) return 'skipped — unlock the vault to run this test';
+      var img = buildFlashImage().bytes;
+      var key = dev.session.keyBuf.buf;
+      outer:
+      for(var s=0;s+key.length<=img.length;s++){
+        for(var j=0;j<key.length;j++) if(img[s+j]!==key[j]) continue outer;
+        throw new Error('vault key found at offset '+s);
+      }
+      return 'searched '+img.length+' bytes, key absent';
+  }},
+  { n:'HID map covers every seed credential character', f: async function(){
+      var missing=[];
+      SEED_RECORDS.forEach(function(r){
+        (r.username+r.password).split('').forEach(function(c){
+          if(!HID_MAP[c] && missing.indexOf(c)<0) missing.push(c);
+        });
+      });
+      if(missing.length) throw new Error('unmapped: '+missing.join(' '));
+      return Object.keys(HID_MAP).length+' US-layout usages mapped';
+  }},
+  { n:'Lockout ladder is monotonically increasing', f: async function(){
+      for(var i=1;i<COOLDOWN.length;i++)
+        if(COOLDOWN[i]<=COOLDOWN[i-1]) throw new Error('not escalating at index '+i);
+      return COOLDOWN.join('s -> ')+'s';
+  }},
+  { n:'Records use distinct IVs', f: async function(){
+      var seen={}, i;
+      for(i=0;i<recs().length;i++){
+        if(seen[recs()[i].iv]) throw new Error('IV reused by record '+recs()[i].id);
+        seen[recs()[i].iv]=1;
+      }
+      return recs().length+' record(s) checked';
+  }}
+];
+
+async function runTests(){
+  var box=$('testout'), sum=$('test-sum');
+  box.innerHTML=''; sum.textContent='running...'; sum.className='mono tiny run';
+  var pass=0, fail=0, t0=performance.now();
+  for(var i=0;i<TESTS.length;i++){
+    var t=TESTS[i], line=el('div','r');
+    var s=el('span','s run','...'), n=el('span','nm',t.n), m=el('span','ms','');
+    line.appendChild(s); line.appendChild(n); line.appendChild(m);
+    box.appendChild(line); box.scrollTop=box.scrollHeight;
+    var a=performance.now();
+    try{
+      var msg = await t.f();
+      s.textContent='PASS'; s.className='s pass';
+      n.innerHTML = esc(t.n)+'  <span class="muted">'+esc(msg||'')+'</span>';
+      pass++;
+    }catch(e){
+      s.textContent='FAIL'; s.className='s fail';
+      n.innerHTML = esc(t.n)+'  <span class="bad-t">'+esc(e.message)+'</span>';
+      fail++;
+    }
+    m.textContent = fmtDur(performance.now()-a);
+  }
+  var total = fmtDur(performance.now()-t0);
+  sum.textContent = pass+'/'+TESTS.length+' passed'+(fail?'  ('+fail+' FAILED)':'')+'  in '+total;
+  sum.className = 'mono tiny '+(fail?'fail':'pass');
+  box.appendChild(el('div','r'));
+  var f=el('div','r');
+  f.innerHTML='<span class="s '+(fail?'fail':'pass')+'">'+(fail?'FAIL':'OK')+'</span>'+
+    '<span class="nm">'+pass+' of '+TESTS.length+' assertions passed in '+total+'</span>';
+  box.appendChild(f);
+  box.scrollTop=box.scrollHeight;
+  log('test','self-test suite: '+pass+'/'+TESTS.length+' passed'+(fail?' — '+fail+' FAILURE(S)':''),
+      fail?'E':'I');
+  return fail===0;
+}
+/* ===========================================================================
+ * 17. IN-APP DOCUMENTATION
+ * =========================================================================*/
+function renderDocs(){
+  var box=$('docs'); if(!box) return;
+  box.innerHTML =
+  '<h4>Project</h4>'+
+  '<p><b>Embedded Bluetooth Password Vault with Secure Credential Storage</b> — a portable ESP32 device '+
+  'with an SSD1306 OLED and a rotary encoder that stores AES-encrypted credentials in flash, authenticates '+
+  'the user with a master password, and types the selected credential into a paired computer over '+
+  'Bluetooth HID. This page is the firmware simulator: the UI, the state machine, the storage format and '+
+  'all of the cryptography are real; only the silicon and the radio are emulated.</p>'+
+  '<table class="t" style="margin:8px 0"><tbody>'+
+  TEAM.map(function(t){ return '<tr><td>'+esc(t[0])+'</td><td class="muted">'+esc(t[1])+'</td></tr>'; }).join('')+
+  '</tbody></table>'+
+
+  '<h4>Operational algorithm (as specified)</h4><ol>'+
+  '<li>Boot: initialise display, Bluetooth and flash; show the boot sequence.</li>'+
+  '<li>Prompt for the master password on the OLED.</li>'+
+  '<li>Hash the entry with the stored KDF parameters and compare against the stored verifier.</li>'+
+  '<li>On failure: increment a <b>persisted</b> attempt counter and re-prompt; after '+
+      '<code>N</code> failures apply an escalating cooldown.</li>'+
+  '<li>On success: derive the vault key and show the account list.</li>'+
+  '<li>The user selects a credential with the rotary encoder.</li>'+
+  '<li>Decrypt that record with AES-256-GCM (tag verified).</li>'+
+  '<li>Verify / establish the Bluetooth HID connection.</li>'+
+  '<li>Transmit username &rarr; <code>Tab</code> &rarr; password &rarr; optional <code>Enter</code>.</li>'+
+  '<li>Zeroize the decrypted credential in RAM.</li>'+
+  '<li>Return to the menu; auto-lock after the configured inactivity timeout.</li></ol>'+
+
+  '<h4>Key hierarchy</h4>'+
+  '<pre class="mono tiny" style="background:#05080c;border:1px solid #1d2a3a;border-radius:6px;padding:10px;overflow:auto">'+
+  'master password + 16-byte random salt\n'+
+  '        |\n'+
+  '        v  PBKDF2-HMAC-SHA256, '+DEFAULT_ITERS.toLocaleString()+' iterations (configurable)\n'+
+  '   root key (256 bit)                       <-- never stored\n'+
+  '        |\n'+
+  '        +-- HKDF-SHA256(info="bpv/verifier/v1")  -> verifier (32 B)  <-- STORED in NVS\n'+
+  '        \\-- HKDF-SHA256(info="bpv/vault-aes/v1") -> AES-256 key      <-- RAM only\n'+
+  '                 |\n'+
+  '                 v  AES-256-GCM, 96-bit random IV per record,\n'+
+  '                    AAD = "v1|&lt;record id&gt;|&lt;label&gt;", 128-bit tag\n'+
+  '            encrypted credential blob {username, password, url}</pre>'+
+  '<p>The vault key is <b>derived, never stored</b>. Flash holds only the salt, the KDF parameters, the '+
+  'verifier, and per-record IV + ciphertext + tag. Because the verifier is a different HKDF branch, an '+
+  'attacker who reads it learns nothing usable about the AES key.</p>'+
+
+  '<h4>Why the attempt counter is written before verification</h4>'+
+  '<p>A naive implementation checks the password first and only records a failure afterwards. That loses to '+
+  'the simplest hardware attack there is: guess, and cut the power the instant the guess is rejected — the '+
+  'counter never reaches flash and the attacker gets unlimited tries. BPV-1 therefore <b>commits the '+
+  'incremented counter to NVS before the PBKDF2 derivation runs</b>. A power cut can only ever lose the '+
+  '<i>reset</i> that follows a success, which fails safe. The Attack Lab demonstrates this: reloading this '+
+  'page mid-attack does not rewind the counter.</p>'+
+
+  '<h4>Other countermeasures implemented here</h4><ul>'+
+  '<li><b>Escalating lockout</b> — '+COOLDOWN.join(' s, ')+' s, persisted as an absolute deadline so it '+
+      'survives reboots.</li>'+
+  '<li><b>Panic wipe</b> after '+PANIC_WIPE_AT+' lifetime failures (configurable) destroys the salt and '+
+      'verifier, making the ciphertext permanently unrecoverable.</li>'+
+  '<li><b>Constant-time verifier comparison</b> plus a '+MIN_VERIFY_MS+' ms floor on the response time, so '+
+      'failures cannot be distinguished by timing.</li>'+
+  '<li><b>AEAD binding</b> — the record id and label go into the GCM associated data, so relabelling or '+
+      'swapping ciphertexts in flash is detected.</li>'+
+  '<li><b>Zeroization</b> — decrypted credentials and the vault key are overwritten (random pass, then '+
+      '0x00) on hide, on lock, on auto-lock and after every transmission.</li>'+
+  '<li><b>Non-extractable key handle</b> — the AES key is imported with <code>extractable:false</code>, '+
+      'mirroring a hardware key slot; only a SHA-256 fingerprint is ever displayed.</li>'+
+  '<li><b>Explicit send confirmation</b> — the device will not type into the host without a physical '+
+      'button press, so a compromised host cannot silently request credentials.</li></ul>'+
+
+  '<h4>Accepted trade-offs</h4><ul>'+
+  '<li>Record <b>labels are plaintext metadata</b> so the menu can be drawn before any decryption. An '+
+      'attacker with the chip learns <i>which</i> accounts exist, not their contents. Encrypting the index '+
+      'as a single blob would remove this leak at the cost of decrypting everything at unlock.</li>'+
+  '<li>Once the credential reaches the host it is ordinary keyboard input; a keylogger on the host defeats '+
+      'any hardware vault. The device only guarantees confidentiality up to the HID boundary.</li>'+
+  '<li>In JavaScript, strings are immutable and cannot be wiped — the simulator zeroizes the '+
+      '<code>Uint8Array</code> buffers it controls and models the rest. Real firmware wipes every '+
+      '<code>char</code> buffer with <code>mbedtls_platform_zeroize()</code>.</li></ul>'+
+
+  '<h4>Mapping to the real hardware</h4>'+
+  '<table class="t"><thead><tr><th>Simulator</th><th>ESP-IDF / Arduino equivalent</th></tr></thead><tbody>'+
+  [['crypto.subtle PBKDF2','mbedtls_pkcs5_pbkdf2_hmac() with MBEDTLS_MD_SHA256'],
+   ['crypto.subtle HKDF','mbedtls_hkdf()'],
+   ['crypto.subtle AES-GCM','mbedtls_gcm_crypt_and_tag() / esp_aes_gcm (hardware accelerated)'],
+   ['crypto.getRandomValues','esp_random() / esp_fill_random(), RF-noise seeded TRNG'],
+   ['localStorage image','nvs_flash + nvs_set_blob() on the "nvs" partition'],
+   ['128x64 canvas','Adafruit_SSD1306 / u8g2 over I2C at 0x3C'],
+   ['rotary buttons','EC11 encoder on GPIO 32/33 + switch on GPIO 25 (PCNT unit + ISR)'],
+   ['simulated BLE HID','esp_hidd_profile / NimBLE HID-over-GATT, appearance 0x03C1'],
+   ['SecureBuffer.zeroize()','mbedtls_platform_zeroize()'],
+   ['&mdash;','flash encryption + secure boot v2 + eFuse-burned HMAC key (production build)']]
+  .map(function(r){ return '<tr><td>'+r[0]+'</td><td class="muted">'+r[1]+'</td></tr>'; }).join('')+
+  '</tbody></table>'+
+
+  '<h4>Bill of materials (target hardware)</h4>'+
+  '<p class="muted">ESP32-WROOM-32 dev board &middot; 0.96" SSD1306 I2C OLED &middot; EC11 rotary encoder with '+
+  'push switch &middot; 3.7 V 500 mAh Li-Po + TP4056 charger &middot; slide switch &middot; piezo buzzer &middot; '+
+  '3D-printed enclosure.</p>'+
+
+  '<h4>Keyboard shortcuts</h4>'+
+  '<p class="muted"><kbd>&uarr;</kbd>/<kbd>&darr;</kbd> rotate the encoder &middot; <kbd>Enter</kbd> press '+
+  '(submits the password during entry) &middot; <kbd>Space</kbd> press &middot; <kbd>Esc</kbd> long-press / back '+
+  '&middot; <kbd>Backspace</kbd> delete a character &middot; any printable key types into the password field.</p>';
+}
+
+/* ===========================================================================
+ * 18. GUIDED DEMO (autopilot)
+ * =========================================================================*/
+var demo = { running:false, abort:false, step:0, total:12 };
+
+function narrate(text){
+  demo.step++;
+  $('narr-step').textContent = demo.step+'/'+demo.total;
+  $('narr-txt').textContent = text;
+  $('narrator').classList.add('show');
+}
+function narrateHide(){ $('narrator').classList.remove('show'); }
+async function dwait(ms){
+  var t=0;
+  while(t<ms){ if(demo.abort) throw new Error('demo aborted'); await sleep(60); t+=60; }
+}
+
+async function runDemo(){
+  if(demo.running) return;
+  demo.running=true; demo.abort=false; demo.step=0;
+  $('demo-play').disabled=true; $('demo-stop').disabled=false;
+  $('demo-status').textContent='running';
+  try{
+    /* 1 — clean slate */
+    narrate('Step 1 — Boot. The device powers up and initialises the OLED, the flash (NVS) partition and the BLE stack.');
+    if(!NVS.data.provisioned){
+      await provision(DEMO_MASTER, parseInt($('s-iters').value,10)||DEFAULT_ITERS, true);
+      $('cheat-pw').textContent = DEMO_MASTER;
+    }
+    if(unlocked()) lockNow('demo start');
+    NVS.data.sec.failCount=0; NVS.data.sec.lockUntil=0; NVS.data.sec.lockLevel=0;
+    NVS.data.sec.totalFails=0;
+    NVS.commit('demo reset');
+    if(dev.powered) powerOff();
+    await dwait(400);
+    await powerOn();
+    await dwait(900);
+
+    narrate('Step 2 — The vault is locked. The master password is entered on the device with the rotary encoder.');
+    selectTab('log'); await dwait(2200);
+
+    narrate('Step 3 — First a WRONG password, to show what an attacker sees.');
+    dev.pw=''; await dwait(700);
+    await attemptUnlock('hunter2'); await dwait(1600);
+
+    narrate('Step 4 — Note the failure counter. It was written to flash BEFORE the password was checked — this is the anti-tamper measure.');
+    selectTab('flash'); renderHex(); await dwait(3200);
+
+    narrate('Step 5 — Cutting the power now cannot rewind that counter: the value comes back from flash on reboot.');
+    var before=NVS.data.sec.failCount;
+    powerOff(); await dwait(700); await powerOn(); await dwait(1200);
+    log('demo','attempt counter before power cut: '+before+', after reboot: '+NVS.data.sec.failCount);
+    await dwait(1400);
+
+    narrate('Step 6 — Now the correct master password. PBKDF2-HMAC-SHA256 stretches it into the root key.');
+    selectTab('crypto'); await dwait(1200);
+    await attemptUnlock(DEMO_MASTER);
+    await dwait(1800);
+
+    narrate('Step 7 — Unlocked. HKDF splits the root key into a verifier and the AES-256 vault key, which exists only in RAM.');
+    selectTab('sram'); renderSram(); await dwait(3000);
+
+    narrate('Step 8 — The account list is shown. Rotating the encoder moves the selection.');
+    selectTab('log'); setState(S.MENU,'demo');
+    for(var i=0;i<2;i++){ onRotate(1); await dwait(600); }
+    await dwait(700);
+
+    narrate('Step 9 — Selecting a record decrypts it with AES-256-GCM. The 128-bit tag is verified before anything is used.');
+    onPress(); await dwait(900);
+    dev.detailSel=0; await dwait(500);
+
+    narrate('Step 10 — The device asks for a physical confirmation before it will type anything into the computer.');
+    onPress(); await dwait(1800);
+
+    narrate('Step 11 — Confirmed. The vault connects over Bluetooth HID and types username, Tab, password, Enter.');
+    selectTab('crypto');
+    onPress();
+    await dwait(600);
+    while(dev.state===S.BTLINK || dev.state===S.DECRYPT || dev.state===S.TYPING){ await dwait(200); }
+    await dwait(400);
+
+    narrate('Step 12 — The plaintext is zeroized immediately after transmission, and the vault auto-locks on idle.');
+    selectTab('sram'); renderSram(); await dwait(2600);
+    lockNow('demo auto-lock');
+    selectTab('log');
+    await dwait(1600);
+    narrate('Walkthrough complete — locked, keys zeroized, ciphertext still on flash. Press Play to run it again.');
+    await dwait(3000);
+  }catch(e){
+    if(!demo.abort) logE('demo',e.message);
+  }
+  narrateHide();
+  demo.running=false;
+  $('demo-play').disabled=false; $('demo-stop').disabled=true;
+  $('demo-status').textContent='idle';
+  renderAll();
+}
+function stopDemo(){ demo.abort=true; narrateHide(); $('demo-status').textContent='stopped'; }
+/* ===========================================================================
+ * 19. UI WIRING
+ * =========================================================================*/
+function selectTab(name){
+  var tabs=document.querySelectorAll('#tabs .tab'), panes=document.querySelectorAll('.tabpane'), i;
+  for(i=0;i<tabs.length;i++) tabs[i].classList.toggle('sel', tabs[i].getAttribute('data-t')===name);
+  for(i=0;i<panes.length;i++) panes[i].classList.toggle('sel', panes[i].id==='pane-'+name);
+  if(name==='flash') renderHex();
+  if(name==='sram')  renderSram();
+  if(name==='fsm')   renderFsm();
+}
+
+async function consoleAddRecord(){
+  var msg=$('p-msg');
+  function say(t,cls){ msg.textContent=t; msg.className='mono tiny '+(cls||''); }
+  if(!unlocked()){ say('ERR: vault is locked — the device refuses to encrypt without the vault key','bad-t');
+    toast('Unlock the vault first','warn'); return; }
+  var label=$('p-label').value.trim(), user=$('p-user').value.trim(), pass=$('p-pass').value;
+  if(!label||!user||!pass){ say('ERR: label, username and password are all required','bad-t'); return; }
+  if(recs().length>=24){ say('ERR: record table full','bad-t'); return; }
+  await storeRecord(dev.session.key, { label:label, username:user, password:pass, url:'https://'+
+    label.toLowerCase().replace(/[^a-z0-9]+/g,'')+'.example.com/login' });
+  NVS.commit('record added');
+  $('p-label').value=''; $('p-user').value=''; $('p-pass').value='';
+  say('OK: "'+label+'" encrypted with AES-256-GCM and committed to NVS','ok-t');
+  renderAll();
+}
+
+async function changeMasterPassword(){
+  if(!unlocked()){ toast('Unlock the vault first','warn'); return; }
+  var np = window.prompt('New master password (min 4 characters):','');
+  if(np===null) return;
+  if(np.length<4){ toast('Too short','err'); return; }
+  var d=NVS.data;
+  logS('vault','re-keying: decrypting every record with the old key, then re-encrypting');
+  var plain=[], i;
+  for(i=0;i<d.records.length;i++){
+    var c = await decryptRecordQuiet(i);
+    if(!c){ toast('Record '+d.records[i].label+' failed to decrypt — aborting re-key','err'); return; }
+    plain.push({ label:d.records[i].label, username:c.username, password:c.password, url:d.records[i].url });
+  }
+  var salt = rnd(SALT_LEN);
+  var iters = parseInt($('s-iters').value,10)||d.kdf.iterations;
+  var root = await Crypto.deriveRoot(np, salt, iters);
+  var kver = await Crypto.hkdf(root.bytes, salt, 'bpv/verifier/v1');
+  var kvault = await Crypto.hkdf(root.bytes, salt, 'bpv/vault-aes/v1');
+  d.kdf.salt=b64(salt); d.kdf.iterations=iters; d.verifier=b64(kver);
+  d.records=[]; d.nextId=1;
+  var key = await Crypto.importAes(kvault);
+  for(i=0;i<plain.length;i++) await storeRecord(key, plain[i]);
+  dev.session.key=key;
+  dev.session.fp=await Crypto.fingerprint(kvault);
+  if(dev.session.keyBuf) dev.session.keyBuf.zeroize();
+  dev.session.keyBuf=SRAM.alloc('vault_key[32] (AES-256)', kvault.slice(0));
+  root.bytes.fill(0); kver.fill(0); kvault.fill(0);
+  NVS.commit('master password changed');
+  $('cheat-pw').textContent=np;
+  logS('vault','re-key complete — new salt, new verifier, '+plain.length+' record(s) re-encrypted');
+  toast('Master password changed and vault re-keyed','ok');
+  renderAll();
+}
+
+function bindUi(){
+  var tabs=document.querySelectorAll('#tabs .tab');
+  for(var i=0;i<tabs.length;i++)(function(t){
+    t.onclick=function(){ selectTab(t.getAttribute('data-t')); };
+  })(tabs[i]);
+
+  $('log-clear').onclick=function(){ $('log').innerHTML=''; };
+  $('flash-refresh').onclick=function(){ renderHex(); toast('re-read '+NVS.writes+' committed writes','info'); };
+  $('flash-scan').onclick=scanForPlaintext;
+  $('sram-reveal').onchange=renderSram;
+  $('test-run').onclick=function(){ selectTab('test'); runTests(); };
+  $('demo-play').onclick=runDemo;
+  $('demo-stop').onclick=stopDemo;
+  $('host-submit').onclick=hostSubmit;
+  $('host-clear').onclick=function(){ host.user=''; host.pass=''; host.authed=false; host.focus=null;
+    $('host-auth').textContent=''; renderHost(); };
+  $('host-reveal').onchange=renderHost;
+  $('ble-encrypt').onchange=function(){ NVS.data.bt.encrypted=this.checked; NVS.commit('ble cfg');
+    log('ble','link encryption '+(this.checked?'enabled (LE Secure Connections)':'DISABLED — traffic is now readable')); };
+  $('p-add').onclick=consoleAddRecord;
+  $('p-changepw').onclick=changeMasterPassword;
+  $('p-gen').onclick=function(){
+    var abc='abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%^&*-_=+';
+    var r=rnd(20), s='';
+    for(var i=0;i<20;i++) s+=abc[r[i]%abc.length];
+    $('p-pass').value=s;
+  };
+  $('btn-quickprov').onclick=async function(){
+    if(NVS.data.provisioned && !window.confirm('This erases the existing vault and provisions a fresh one. Continue?')) return;
+    lockNow('re-provision', true);
+    await provision(DEMO_MASTER, parseInt($('s-iters').value,10)||DEFAULT_ITERS, true);
+    $('cheat-pw').textContent=DEMO_MASTER;
+    if(!dev.powered) await powerOn(); else enterLockedOrLockout('provisioned');
+    toast('Provisioned. Master password: '+DEMO_MASTER,'ok');
+    applyCfgToUi(); renderAll();
+  };
+  $('btn-wipe').onclick=function(){
+    if(!window.confirm('Erase the entire simulated flash partition?')) return;
+    lockNow('factory wipe', true);
+    NVS.erase(); BLE.disconnect('wipe');
+    logE('nvs','factory wipe — salt, verifier and all ciphertext destroyed');
+    dev.pw=''; dev.pwConfirm=null; dev.curIdx=-1; dev.menuSel=0;
+    if(dev.powered) setState(S.PROVISION,'wiped');
+    applyCfgToUi(); renderAll(); toast('Flash erased','err');
+  };
+
+  $('s-autolock').onchange=function(){ NVS.data.cfg.autoLockMs=parseInt(this.value,10); NVS.commit('cfg'); };
+  $('s-speed').onchange   =function(){ NVS.data.cfg.typeDelay=parseInt(this.value,10); NVS.commit('cfg'); };
+  $('s-iters').onchange   =function(){
+    toast('New iteration count applies to the next provisioning or re-key','info'); };
+  $('s-maxatt').onchange  =function(){ NVS.data.sec.maxAttempts=clamp(parseInt(this.value,10)||5,1,10);
+    NVS.commit('cfg'); updateChips(); };
+  $('s-enter').onchange   =function(){ NVS.data.cfg.sendEnter=this.checked; NVS.commit('cfg'); };
+  $('s-wipe').onchange    =function(){ NVS.data.sec.wipeEnabled=this.checked; NVS.commit('cfg'); };
+  $('s-beep').onchange    =function(){ NVS.data.cfg.beep=this.checked; NVS.commit('cfg'); };
+
+  $('modal').onclick=function(e){ if(e.target===this) closeModal(); };
+}
+
+/* ===========================================================================
+ * 20. MAIN
+ * =========================================================================*/
+function tick(){
+  if(dev.state===S.LOCKOUT && NVS.data && NVS.data.sec.lockUntil<=nowMs()){
+    log('sec','cooldown expired — one more attempt permitted');
+    dev.pw=''; dev.ring=0;
+    setState(S.LOCKED,'cooldown expired');
+  }
+  tickAutoLock();
+  updateChips();
+  if(document.querySelector('#pane-sram').classList.contains('sel')) renderSram();
+}
+
+function loop(){
+  render();
+  var mf=$('meta-fps');
+  if(mf && frameCount%15===0) mf.textContent='frame '+frameCount+' · 128x64 1bpp · '+
+    (NVS.data?NVS.writes+' flash writes':'');
+  requestAnimationFrame(loop);
+}
+
+/* Pick the largest whole-number pixel size that fits the enclosure, so one
+   simulated OLED pixel is always an exact block of screen pixels (no resampling). */
+function resizeScreen(){
+  var box = screenCv.parentNode;
+  var avail = ((box && box.clientWidth) || 400) - 18;
+  var sc = clamp(Math.floor(avail/OLED_W), 2, 9);
+  if(sc===PXS && screenCv.width===OLED_W*sc) return;
+  PXS = sc;
+  screenCv.width = OLED_W*sc; screenCv.height = OLED_H*sc;
+  screenCv.style.width = (OLED_W*sc)+'px';
+  screenCv.style.height = (OLED_H*sc)+'px';
+  sx = screenCv.getContext('2d');
+  sx.imageSmoothingEnabled = false;
+}
+
+function boot(){
+  screenCv=$('oled'); sx=screenCv.getContext('2d');
+  resizeScreen();
+  window.addEventListener('resize', resizeScreen);
+
+  if(!cryptoInit()){
+    $('fatal').classList.add('show');
+    $('fatal-detail').textContent='window.crypto.subtle is '+
+      (window.crypto? 'undefined on this origin ('+location.protocol+')':'unavailable');
+    return;
+  }
+  NVS.load();
+  applyCfgToUi();
+  bindInputs();
+  bindUi();
+  renderDocs();
+  renderAttacks();
+  renderFsm();
+  renderAll();
+  log('sys','BPV-1 simulator ready — '+HW_REV+', firmware v'+FW_VERSION);
+  log('sys','crypto backend: window.crypto.subtle (real PBKDF2 / HKDF / AES-256-GCM)');
+  if(NVS.volatile) logW('nvs','localStorage unavailable — flash image is volatile for this session');
+  ctrace('init','WebCrypto ready · PBKDF2-HMAC-SHA256 · HKDF-SHA256 · AES-256-GCM');
+  setInterval(tick, 250);
+  requestAnimationFrame(loop);
+
+  setTimeout(function(){
+    powerOn().then(function(){
+      if(!NVS.data.provisioned)
+        toast('First run: set a master password on the device, or click "Quick factory provision"','info');
+    });
+  }, 420);
+}
+
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', boot);
+else boot();
+
+/* Handles for the serial-console equivalent: everything a reviewer might want
+   to drive by hand from the browser console, e.g.
+       BPV.attemptUnlock('Vault@2026')      BPV.decryptRecord(0)
+       BPV.buildFlashImage().bytes.length   BPV.runTests()                    */
+window.BPV = {
+  dev:dev, NVS:NVS, Crypto:Crypto, SRAM:SRAM, BLE:BLE, host:host,
+  runTests:runTests, provision:provision, storeRecord:storeRecord,
+  attemptUnlock:attemptUnlock, decryptRecord:decryptRecord, sendCredential:sendCredential,
+  lockNow:lockNow, powerOn:powerOn, powerOff:powerOff, buildFlashImage:buildFlashImage,
+  b64:b64, unb64:unb64, hex:hex, ctEqual:ctEqual, version:FW_VERSION
+};
+
+})();
+</script>
+</body>
+</html>

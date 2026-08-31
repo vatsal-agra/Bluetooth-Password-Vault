@@ -1,0 +1,16 @@
+# OS cruft
+.DS_Store
+Thumbs.db
+desktop.ini
+*~
+
+# Editors
+.vscode/
+.idea/
+
+# Netlify CLI
+.netlify/
+
+# Nothing here is built, but just in case
+node_modules/
+*.log
