@@ -7,24 +7,32 @@
   publish = "."
   command = ""
 
-# The simulator makes no network requests of any kind. This policy enforces
-# that at the browser level: nothing may be loaded from, or sent to, anywhere.
-# Inline script and style are permitted because the entire application is one
-# self-contained file by design.
+# Baseline hardening for everything served from this site.
 [[headers]]
   for = "/*"
   [headers.values]
-    Content-Security-Policy = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
     X-Content-Type-Options = "nosniff"
     X-Frame-Options = "DENY"
     Referrer-Policy = "no-referrer"
     Permissions-Policy = "accelerometer=(), camera=(), geolocation=(), gyroscope=(), microphone=(), payment=(), usb=(), bluetooth=(), serial=(), hid=()"
     Cross-Origin-Opener-Policy = "same-origin"
 
-# The simulator itself is edited between demos; never let a stale copy stick.
+# The simulator makes no network requests of any kind. This policy enforces that
+# at the browser level: nothing may be loaded from, or sent to, anywhere. Inline
+# script and style are permitted because the whole application is one file by
+# design. It is scoped to the app page rather than "/*" so that the browser's
+# built-in PDF viewer is not blocked when the documentation is opened directly.
+[[headers]]
+  for = "/"
+  [headers.values]
+    Content-Security-Policy = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# The simulator is edited between demos; never let a stale copy stick.
 [[headers]]
   for = "/index.html"
   [headers.values]
+    Content-Security-Policy = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
     Cache-Control = "public, max-age=0, must-revalidate"
 
 [[headers]]
