@@ -354,3 +354,98 @@ That is a clean, honest limitation to state in a review rather than something to
 
 If you have to pick one of these, the CH9329 bridge is the only one that keeps the security
 argument intact. But an ESP32 is cheaper than the bridge and keeps the project as specified.
+
+---
+
+## 12. Minimum viable build
+
+For when the goal is a working device rather than a faithful replica of the simulated one.
+Scope is cut deliberately and the cuts are stated, which is a better position in a review than
+an ambitious build that does not boot.
+
+### Three buttons instead of a rotary encoder
+
+This is a simplification, not a compromise. Quadrature decoding and contact bounce are the
+fiddliest part of the whole build; three tactile switches remove the problem completely and need
+nothing but `INPUT_PULLUP` and a 25 ms software debounce — no filter capacitors, no interrupts,
+no PCNT.
+
+The simulator's input layer already routes everything through three calls — `onRotate(-1)`,
+`onRotate(+1)` and `onPress()`, with `onLong()` for back — so buttons map onto it one to one:
+
+| Button | Calls | Replaces |
+|---|---|---|
+| UP | `onRotate(-1)` | encoder counter-clockwise |
+| DOWN | `onRotate(+1)` | encoder clockwise |
+| OK (short press) | `onPress()` | encoder click |
+| OK (held 600 ms) | `onLong()` | encoder long-press |
+
+Password entry still uses the character ring; UP and DOWN scroll it and OK accepts. Shorten the
+ring to lowercase plus digits (36 entries) so scrolling to a character is not tedious.
+
+6×6 mm tactile switches cost ₹2–5 each and are in every component kit.
+
+### Two shopping lists
+
+**Option A — keeps the project as designed. Recommended.**
+
+| Part | ₹ |
+|---|---|
+| ESP32 DevKit V1 (WROOM-32) | 350–650 |
+| 3 × tactile push button | 10–30 |
+| *(OLED, if you do not have one)* | *150–250* |
+| **Total** | **₹360–680** |
+
+**Option B — buys nothing but buttons, uses the ESP8266 you have.**
+
+| Part | ₹ |
+|---|---|
+| 3 × tactile push button | 10–30 |
+| *(OLED, if you do not have one)* | *150–250* |
+| **Total** | **₹10–30** |
+
+### The cost argument for Option A
+
+Making the ESP8266 type into a computer needs a CH9329 USB-HID bridge at ₹300–500. Add the
+buttons and that is ₹330–530 — the same money as an ESP32 DevKit, for a device that is wired
+instead of wireless and no longer matches the project title.
+
+If you are going to spend anything at all, spend it on the ESP32.
+
+### What Option B actually delivers
+
+Everything except the final transport:
+
+| Implemented in hardware | Status |
+|---|---|
+| Boot and peripheral init | ✅ |
+| Master password entry on-device | ✅ |
+| PBKDF2 → HKDF key derivation | ✅ |
+| Persisted failed-attempt counter, written before verification | ✅ |
+| Escalating lockout | ✅ |
+| AES-256-GCM encrypted records in flash | ✅ |
+| Account menu and selection | ✅ |
+| Decrypt with tag verification | ✅ |
+| **Deliver to the computer** | ❌ **credential is displayed on the OLED instead** |
+| Zeroize after use | ✅ |
+| Inactivity auto-lock | ✅ |
+
+Ten of the eleven specified steps run on real silicon. The one that does not is the Bluetooth
+HID transport, and the simulator demonstrates that part convincingly on its own.
+
+Framed honestly, that is a complete system across two artifacts: the hardware proves the storage,
+the key hierarchy and the anti-tamper counter; the simulator proves the transport. Say it that
+way rather than letting a reviewer discover the gap.
+
+### Button pin map
+
+| Signal | ESP32 GPIO | ESP8266 GPIO | NodeMCU label |
+|---|---|---|---|
+| UP | 32 | 12 | D6 |
+| DOWN | 33 | 14 | D5 |
+| OK | 25 | 13 | D7 |
+| OLED SDA | 21 | 4 | D2 |
+| OLED SCL | 22 | 5 | D1 |
+
+Wire each button from its GPIO to GND and enable the internal pull-up. No external resistors and
+no capacitors are needed.
