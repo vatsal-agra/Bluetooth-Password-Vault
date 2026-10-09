@@ -278,6 +278,7 @@ with push switch · 3.7 V 500 mAh Li-Po with a TP4056 charger · slide switch ·
 ```
 index.html      the entire simulator - HTML, CSS and JavaScript in one file
 README.md       this document
+HARDWARE.md     parts list and build notes for the physical device
 HOW_TO_USE.md   operator's guide for the team: controls, tasks, glossary
 HOW_TO_USE.pdf  the same guide, print-ready (A4, 9 pages)
 DEMO_SCRIPT.md  the walkthrough to present, with expected questions
