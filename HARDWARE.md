@@ -18,9 +18,22 @@ that.
 | ESP32-S3 | BLE 5.0 only | Works, but fewer copy-paste examples. |
 | ESP32-C3 | BLE 5.0 only | Works. Cheap, single core, less RAM. |
 | **ESP32-S2** | **None at all** | **No.** It has Wi-Fi and no Bluetooth whatsoever. |
+| **ESP8266 / ESP8266EX** | **None at all** | **No.** Wi-Fi only. See below. |
 
 The ESP32-S2 trap is easy to fall into — it is sold on boards that look identical to ESP32 ones
 and is sometimes cheaper. If the listing does not say "Bluetooth", do not buy it.
+
+### The ESP8266 is not a smaller ESP32
+
+They are different chips from different generations, and the ESP8266EX has **no Bluetooth
+hardware of any kind** — not Classic, not BLE. No library or firmware can add it, because the
+radio is 802.11 b/g/n only. Any "ESP8266 Bluetooth" result you find online is either an external
+module doing the work or simply wrong.
+
+An ESP8266 can still run most of this project: the display, the encoder, the state machine, the
+key derivation, the AES-GCM storage. It cannot do step 8 and step 9 of the specified algorithm,
+which is where the credential is actually delivered. If an ESP8266 is what you have, see §11 for
+what to build on it today and what the alternatives are.
 
 Prefer a **WROOM-32E** (rev 3 silicon). Rev 3 supports Secure Boot v2, which you will want in
 §7 if you take the security side all the way.
@@ -264,3 +277,80 @@ no protection circuit are a genuine fire risk.
 
 Keep the simulator working throughout — it is your reference implementation, and if the hardware
 misbehaves the night before a review, it is also your demo.
+
+---
+
+## 11. If you already have an ESP8266
+
+The ESP8266EX has no Bluetooth, so it cannot be the final device for a project called a
+*Bluetooth* password vault. The recommendation is to buy an ESP32 DevKit — at ₹350–650 it costs
+less than every workaround below, and the ESP8266 stays useful as a Wi-Fi board for something
+else.
+
+That said, you are not blocked from starting today. Roughly 80% of the firmware is transport-
+independent and ports straight across.
+
+### What runs on an ESP8266 unchanged
+
+| Works | Note |
+|---|---|
+| SSD1306 OLED over I²C | Same `Adafruit_SSD1306` / `u8g2` code |
+| EC11 rotary encoder | Interrupt-driven; no PCNT peripheral, so the 100 nF filter caps matter more |
+| The whole state machine and UI | Boot, password entry, menu, detail, settings, auto-lock |
+| PBKDF2 → HKDF → AES-256-GCM | Via BearSSL (bundled with the ESP8266 Arduino core) or mbedTLS |
+| Persistent encrypted storage | **LittleFS**, not NVS — `nvs_flash` is an ESP-IDF API and does not exist here |
+
+### What does not
+
+Steps 8–9: establishing the BLE HID link and transmitting the keystrokes. There is no radio for
+it and no USB peripheral either.
+
+### ESP8266 pin map
+
+Avoids every strapping pin. Assumes a NodeMCU or Wemos D1 mini — a bare ESP-01 has far too few
+GPIOs for this build.
+
+| Signal | GPIO | NodeMCU label |
+|---|---|---|
+| OLED SDA | 4 | D2 |
+| OLED SCL | 5 | D1 |
+| Encoder A | 12 | D6 |
+| Encoder B | 14 | D5 |
+| Encoder switch | 13 | D7 |
+| Buzzer | 15 | D8 — note this pin must be LOW at boot |
+
+**Do not use** GPIO0, GPIO2 or GPIO15 for inputs that could be pulled the wrong way at reset, and
+remember GPIO16 (D0) supports neither interrupts nor an internal pull-up, so it is useless for
+the encoder.
+
+### Porting caveats
+
+**Key derivation is slower.** The ESP8266 is a single 80 MHz core with no SHA or AES accelerator,
+so PBKDF2 runs slower than on an ESP32, which is itself far slower than the laptop figure of
+150,000 iterations. Start at **5,000**, measure the actual unlock time, and quote the measured
+number.
+
+**Less RAM.** Around 40–50 KB of usable heap. Fine for this project, but do not hold more than
+one decrypted credential at a time — which the design already requires.
+
+**No flash encryption and no Secure Boot.** These are ESP32 features built on eFuses the ESP8266
+does not have. Worth being precise about what that costs:
+
+* It does **not** break the storage design. The vault key is derived from the master password and
+  never written to flash, so a flash dump still yields only ciphertext. That part holds.
+* It **does** remove firmware integrity. An attacker with the board can reflash it with a version
+  that captures the master password. On ESP32 you would burn Secure Boot to prevent exactly
+  this.
+
+That is a clean, honest limitation to state in a review rather than something to hide.
+
+### If buying an ESP32 is genuinely not an option
+
+| Approach | What you get | What it costs you |
+|---|---|---|
+| **Add a UART-to-USB-HID bridge** (CH9329 or CH9328, ₹300–500) | The ESP8266 sends the credential over serial and the bridge types it as a real USB keyboard. Keeps the "no software on the host" property intact. | It is now a **wired USB** vault. The project is no longer Bluetooth, and the title has to change. |
+| **Wi-Fi plus a helper app on the PC** | Uses the radio the chip actually has. | Badly weakens the security story: the host now runs a trusted agent, credentials cross a network, and the "appears as an ordinary keyboard, needs no drivers" argument is gone. Hardest option to defend in a review. |
+| **Bolt on a BLE-HID module** | Keeps Bluetooth. | The convenient ones (Adafruit EZ-Key, RN-42-HID) are discontinued or cost more than an ESP32. HC-05 and HM-10 **cannot** do HID — they are serial profiles only. Not worth it. |
+
+If you have to pick one of these, the CH9329 bridge is the only one that keeps the security
+argument intact. But an ESP32 is cheaper than the bridge and keeps the project as specified.
